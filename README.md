@@ -48,6 +48,61 @@ registrar os pontos já coletados, use o radar de campo do Penetro3D.
 
 O relatório traz o método completo, as incertezas e o que conferir no campo.
 
+## Tutorial de uso
+
+### 1. Prepare os arquivos
+
+Tenha em mãos:
+
+- o **KML com o limite de cada talhão**; cada polígono deve ter um nome diferente;
+- a **planilha exportada do Falker PenetroLOG**, com coordenadas GPS e leituras por profundidade.
+
+Para conhecer o fluxo antes de trabalhar com dados próprios, use os arquivos fictícios da pasta `exemplos`.
+
+### 2. Planeje a coleta
+
+1. Abra o Penetro3D e entre na aba **1 · Planejar coleta**.
+2. Selecione o arquivo KML dos talhões.
+3. Escolha a densidade da malha: menor, recomendada ou maior.
+4. Confira no mapa se os pontos estão distribuídos corretamente dentro dos limites.
+5. Exporte o formato adequado ao trabalho:
+   - **Google Earth (.KMZ):** opção mais simples para visualizar o limite, os pontos e a sequência no celular;
+   - **Radar de campo:** guia por GPS e permite marcar os pontos já coletados;
+   - **GPX, GeoJSON ou CSV:** integração com outros aplicativos e equipamentos.
+
+### 3. Leve o plano ao celular
+
+Para usar o Google Earth, envie o `.kmz` ao celular, toque no arquivo e escolha **Abrir com Google Earth**. A linha exibida é uma sugestão de sequência entre os pontos, não uma rota por estradas.
+
+Para usar o radar, clique em **Ver no celular**, conecte o computador e o celular à mesma rede Wi-Fi e leia o QR code. Mantenha a tela do Penetro3D aberta enquanto estiver usando o radar.
+
+### 4. Faça a coleta no campo
+
+1. Vá até cada ponto planejado e confirme a posição pelo GPS.
+2. Realize a leitura com o penetrômetro conforme o procedimento da equipe.
+3. No radar, marque o ponto como concluído antes de seguir para o próximo.
+4. Ao terminar, exporte a planilha no software do Falker sem alterar nomes de colunas, coordenadas ou valores.
+
+> **Atenção:** a precisão do GPS do celular varia. Use o radar como orientação de navegação, não como substituto de um receptor de maior precisão quando o protocolo exigir posicionamento rigoroso.
+
+### 5. Gere os relatórios
+
+1. Volte ao Penetro3D e abra a aba **2 · Gerar relatórios**.
+2. Informe o nome do projeto.
+3. Selecione o mesmo KML usado no planejamento e a planilha exportada pelo Falker.
+4. Escolha a pasta de saída e clique em **Gerar relatórios**.
+5. Leia o painel de conferência antes de interpretar os mapas. Verifique pontos fora dos talhões, perfis incompletos, leituras atípicas e densidade amostral baixa.
+
+O programa cria uma pasta para cada talhão com o relatório 3D em HTML, o relatório em PDF e os arquivos CSV. Abra o HTML para exploração interativa e use o PDF para impressão e arquivamento.
+
+### 6. Interprete com cautela
+
+- Confira se o número de pontos e os limites dos talhões estão corretos.
+- Compare camadas, perfis e espessura acima do limite; não tome decisões por uma única imagem.
+- Observe o selo de validação espacial. Quando ele indicar **sem suporte espacial**, os dados descrevem o nível médio de resistência, mas não sustentam a localização precisa de zonas dentro do talhão.
+- Relacione os resultados com umidade, textura, manejo, tráfego de máquinas e observações de campo.
+- Preserve os arquivos originais do KML e do Falker para permitir conferência e reprodução da análise.
+
 ## Dados neste repositório
 
 O repositório é público e **não contém dados reais de nenhuma propriedade**. A pasta `exemplos/` tem uma fazenda fictícia gerada por `exemplos/gerar_exemplo.py`: polígonos inventados e leituras simuladas. Não adicione KMLs ou planilhas de campo aos commits. O `.gitignore` já exclui `saidas/`.
