@@ -75,3 +75,14 @@ def test_rodape_da_interface_exibe_autoria_licenca_e_github():
 
     assert "f'Autoria: {AUTOR} · Licença MIT'" in interface
     assert "f'https://github.com/{REPO_GITHUB}'" in interface
+
+
+def test_aplicativo_e_instalador_nao_mencionam_fapa():
+    from conftest import RAIZ
+    arquivos = [
+        Path(RAIZ, 'app', 'penetro3d_app.py'),
+        Path(RAIZ, 'instalador', 'penetro3d.nsi'),
+    ]
+
+    for arquivo in arquivos:
+        assert 'FAPA' not in arquivo.read_text(encoding='utf-8'), arquivo

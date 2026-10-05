@@ -21,7 +21,7 @@ SetCompressorDictSize 64
 !include "LogicLib.nsh"
 
 !define APP      "Penetro3D"
-!define EDITOR   "FAPA · Fundação Agrária de Pesquisa Agropecuária"
+!define EDITOR   "ANUNCIATO, V.M."
 !define CHAVE_UN "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP}"
 !define CHAVE    "Software\${APP}"
 

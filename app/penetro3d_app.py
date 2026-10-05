@@ -77,7 +77,7 @@ def _preparar_windows():
         except (AttributeError, OSError):
             pass
     try:
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('FAPA.Penetro3D')
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('Penetro3D.App')
     except (AttributeError, OSError):
         pass
 
