@@ -67,3 +67,11 @@ def test_interface_nao_oferece_servidor_local_para_celular():
 
     assert 'Ver no celular' not in interface
     assert 'def _no_celular' not in interface
+
+
+def test_rodape_da_interface_exibe_autoria_licenca_e_github():
+    from conftest import RAIZ
+    interface = Path(RAIZ, 'app', 'penetro3d_app.py').read_text(encoding='utf-8')
+
+    assert "f'Autoria: {AUTOR} · Licença MIT'" in interface
+    assert "f'https://github.com/{REPO_GITHUB}'" in interface

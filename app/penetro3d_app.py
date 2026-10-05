@@ -166,8 +166,17 @@ def abrir_janela():
             self.aba_rel = ttk.Frame(self.abas, padding=16)
             self.abas.add(self.aba_pl, text='  1 · Planejar coleta  ')
             self.abas.add(self.aba_rel, text='  2 · Gerar relatórios  ')
-            ttk.Label(raiz, text=f'Autoria: {AUTOR}', style='Dica.TLabel').pack(
-                anchor='e', padx=20, pady=(0, 10))
+            rodape = ttk.Frame(raiz)
+            rodape.pack(fill='x', padx=20, pady=(0, 10))
+            ttk.Label(rodape, text=f'Autoria: {AUTOR} · Licença MIT',
+                      style='Dica.TLabel').pack(side='left')
+            url_github = f'https://github.com/{REPO_GITHUB}'
+            link_github = ttk.Label(
+                rodape, text=url_github, style='Link.TLabel', cursor='hand2', takefocus=True)
+            link_github.pack(side='right')
+            link_github.bind('<Button-1>', lambda _e: webbrowser.open(url_github))
+            link_github.bind('<Return>', lambda _e: webbrowser.open(url_github))
+            link_github.bind('<space>', lambda _e: webbrowser.open(url_github))
 
             self._montar_planejamento()
             self._montar_relatorios()
