@@ -1,7 +1,5 @@
 """Ponta a ponta: KML + planilha de exemplo → pasta com HTML, PDF e CSVs."""
-import json
 import os
-import re
 
 import pandas as pd
 import pytest
@@ -31,10 +29,12 @@ def test_estrutura_de_saida(saida):
 
 def test_html_e_autocontido_e_traz_os_dados(saida):
     html = open(saida['htmls'][0], encoding='utf-8').read()
-    m = re.search(r'const D\s*=\s*(\{.*?\});\s*\n', html, re.S)
-    if 'cdn.plot.ly' not in html:
-        assert 'Plotly' in html and len(html) > 1_000_000      # plotly.js embutido
-    assert '</script' not in (m.group(1) if m else '')
+    from penetro3d_core import _plotly_js
+    if _plotly_js():                                       # instalador: tudo embutido
+        assert 'plotly.js v2.35.2' in html and len(html) > 4_000_000
+        assert '<script src="http' not in html
+    else:                                                  # rodando do código, sem vendor/
+        assert 'cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.2/' in html
     assert 'Penetro3D' in html
 
 
