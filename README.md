@@ -139,10 +139,8 @@ app/
   penetro3d_core.py          KML, planilha Falker, interpolação, validação, HTML
   penetro3d_pdf.py           relatório PDF
   penetro3d_amostragem.py    malha hexagonal e rota de coleta
-  penetro3d_celular.py       servidor local + QR code ("Ver no celular")
   penetro3d_atualizacao.py   consulta de versão nova no GitHub
   relatorio_template.html    o relatório 3D
-  radar/                     app de campo (PWA) que guia até cada ponto
 exemplos/                    fazenda fictícia
 instalador/                  script de montagem e instalador NSIS
 testes/                      pytest

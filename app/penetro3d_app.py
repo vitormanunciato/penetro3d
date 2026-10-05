@@ -596,10 +596,6 @@ def abrir_janela():
             self.bt_relatorio = ttk.Button(depois, text='Abrir relatório 3D',
                                            state='disabled', command=self._abrir_relatorio)
             self.bt_relatorio.pack(side='left', padx=(0, 6))
-            self.bt_celular = ttk.Button(
-                depois, text='Ver no celular', state='disabled',
-                command=lambda: self._no_celular(self.destino, 'Relatórios do projeto'))
-            self.bt_celular.pack(side='left', padx=(0, 6))
             self.bt_abrir = ttk.Button(depois, text='Abrir pasta', state='disabled',
                                        command=lambda: self._abrir(self.destino))
             self.bt_abrir.pack(side='left')
@@ -719,7 +715,7 @@ def abrir_janela():
 
             self.rodando = True
             self._rotulo_botao()
-            for b in (self.bt_abrir, self.bt_relatorio, self.bt_celular):
+            for b in (self.bt_abrir, self.bt_relatorio):
                 b.configure(state='disabled')
             self.barra.start(12)
             self._limpa(self.txt_log)
@@ -755,66 +751,6 @@ def abrir_janela():
 
         def _abrir_relatorio(self):
             self._abrir(self.htmls[0] if self.htmls else None)
-
-        def _no_celular(self, pasta, titulo):
-            """Serve a pasta na rede local e mostra o QR para o celular abrir."""
-            if not pasta or not os.path.isdir(pasta):
-                messagebox.showinfo(APP, 'Gere os arquivos antes de enviar ao celular.')
-                return
-            try:
-                from penetro3d_celular import matriz_qr, servir
-                url, parar = servir(pasta, titulo)
-            except Exception as e:                                   # noqa: BLE001
-                messagebox.showerror(APP, f'Não consegui iniciar o servidor local:\n{e}')
-                return
-
-            jan = tk.Toplevel(self.raiz)
-            jan.title('Abrir no celular')
-            jan.configure(bg=FUNDO)
-            jan.resizable(False, False)
-            jan.transient(self.raiz)
-            q = ttk.Frame(jan, padding=(24, 20))
-            q.pack()
-            ttk.Label(q, text='ABRIR NO CELULAR', style='Olho.TLabel').pack(anchor='w')
-            ttk.Label(q, text=titulo, style='Secao.TLabel').pack(anchor='w', pady=(2, 12))
-
-            m = matriz_qr(url)
-            if m:
-                px = max(2, self.px(260) // len(m))
-                cv = tk.Canvas(q, width=px * len(m), height=px * len(m), bg='white',
-                               highlightthickness=1, highlightbackground=LINHA)
-                cv.pack()
-                for i, linha in enumerate(m):
-                    for j, v in enumerate(linha):
-                        if v:
-                            cv.create_rectangle(j * px, i * px, (j + 1) * px, (i + 1) * px,
-                                                fill=TINTA, outline='')
-            else:
-                ttk.Label(q, text='(instale o pacote "qrcode" para ver o código)',
-                          style='Dica.TLabel').pack(pady=20)
-
-            end = tk.Entry(q, font=('Consolas', 11), justify='center', bd=1,
-                           relief='solid', readonlybackground=CARTAO)
-            end.insert(0, url)
-            end.configure(state='readonly')
-            end.pack(fill='x', pady=(14, 6), ipady=5)
-            ttk.Label(q, justify='left', style='Dica.TLabel', wraplength=self.px(300),
-                      text='Aponte a câmera do celular para o código, ou digite o endereço '
-                           'no navegador. O celular precisa estar na mesma rede Wi-Fi do '
-                           'computador.\n\nEnquanto esta janela estiver aberta, o endereço '
-                           'funciona. Ao fechar, ele para.').pack(anchor='w', pady=(6, 14))
-
-            def copiar():
-                self.raiz.clipboard_clear(); self.raiz.clipboard_append(url)
-                bt_copiar.configure(text='Endereço copiado')
-                jan.after(1600, lambda: bt_copiar.configure(text='Copiar endereço'))
-
-            bt_copiar = ttk.Button(q, text='Copiar endereço', command=copiar)
-            bt_copiar.pack(fill='x')
-            fechar = lambda: (parar(), jan.destroy())                # noqa: E731
-            ttk.Button(q, text='Fechar e parar', style='Acao.TButton',
-                       command=fechar).pack(fill='x', pady=(8, 0))
-            jan.protocol('WM_DELETE_WINDOW', fechar)
 
         # ─────────────────────────────────────────────────────── atualização ──
         def _verificar_atualizacao(self, manual):
@@ -914,7 +850,6 @@ def abrir_janela():
                     self._escreve(self.txt_log, 'Pontos não atribuídos: '
                                   + ', '.join(carga['orfaos']), 'atencao')
                 self.bt_abrir.configure(state='normal')
-                self.bt_celular.configure(state='normal')
                 self.bt_relatorio.configure(state='normal' if self.htmls else 'disabled')
                 # um talhão só: abre o relatório, que é o que o usuário faria em seguida
                 if len(self.htmls) == 1:

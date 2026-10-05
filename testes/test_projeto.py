@@ -1,5 +1,6 @@
 """Ponta a ponta: KML + planilha de exemplo → pasta com HTML, PDF e CSVs."""
 import os
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -58,3 +59,11 @@ def test_grade_csv_sem_buracos(saida):
     g = pd.read_csv(os.path.join(saida['destino'], 'Talhao_Sul', 'grade_interpolada.csv'),
                     sep=None, engine='python')
     assert len(g) > 1000 and not g.isna().any().any()
+
+
+def test_interface_nao_oferece_servidor_local_para_celular():
+    from conftest import RAIZ
+    interface = Path(RAIZ, 'app', 'penetro3d_app.py').read_text(encoding='utf-8')
+
+    assert 'Ver no celular' not in interface
+    assert 'def _no_celular' not in interface
