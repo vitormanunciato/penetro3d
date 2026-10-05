@@ -6,8 +6,8 @@ Penetro3D — planejamento amostral e relatórios de compactação do solo.
 Duas etapas, duas abas:
 
   1 · Planejar coleta   KML → malha hexagonal em três níveis de densidade, com rota
-                        de caminhamento, exportada em KML/KMZ/GPX/CSV/GeoJSON. O
-                        GeoJSON é o que o radar de campo consome.
+                        de caminhamento, exportada em KMZ (padrão), KML, GPX,
+                        GeoJSON ou CSV.
 
   2 · Gerar relatórios  KML + planilha do Falker → conferência dos dados antes de
                         processar, depois HTML interativo, PDF e CSV por talhão.
@@ -46,6 +46,16 @@ CORES_NIVEL = {'ok': VERDE1, 'atencao': AMBAR, 'erro': VERMELHO}
 ICONES = {'ok': '✓', 'atencao': '!', 'erro': '×'}
 ROTULO_GRAU = {'alta': 'PRESCREVER', 'media': 'ZONEAR',
                'baixa': 'CARACTERIZAR', 'insuficiente': 'EXPLORATÓRIO'}
+
+FORMATOS_PLANO = (
+    ('Google Earth (.KMZ)', 'kmz'),
+    ('Google Earth (.KML)', 'kml'),
+    ('GPS (.GPX)', 'gpx'),
+    ('GeoJSON (.GeoJSON)', 'geojson'),
+    ('Tabela de pontos (.CSV)', 'csv'),
+    ('Todos os formatos', 'todos'),
+)
+FORMATO_PLANO_PADRAO = FORMATOS_PLANO[0][0]
 
 
 def _preparar_windows():
@@ -89,7 +99,6 @@ def abrir_janela():
             self.planos = None
             self.talhoes_plano = None
             self.htmls = []
-            self.pasta_plano = None
             self.kmls_rel, self.kmls_pl = [], []
             self.info_atualizacao = None
 
@@ -378,23 +387,22 @@ def abrir_janela():
             self._campo_arquivo(rod, self.v_saida_pl, 'Onde salvar os planos', None,
                                 lambda: None, pasta=True).pack(
                 side='left', fill='x', expand=True, padx=(8, 8))
-            self.bt_exportar = ttk.Button(rod, text='Exportar plano', style='Acao.TButton',
-                                          command=self._exportar_plano, state='disabled')
-            self.bt_exportar.pack(side='left')
-            self.bt_google_earth = ttk.Button(
-                rod, text='Google Earth (.KMZ)', command=self._exportar_google_earth,
-                state='disabled')
-            self.bt_google_earth.pack(side='left', padx=(8, 0))
-            self.bt_cel_plano = ttk.Button(
-                rod, text='Enviar ao celular', state='disabled',
-                command=lambda: self._no_celular(self.pasta_plano, 'Plano de amostragem'))
-            self.bt_cel_plano.pack(side='left', padx=(8, 0))
+            self.v_formato_pl = tk.StringVar(value=FORMATO_PLANO_PADRAO)
+            ttk.Label(rod, text='Formato', style='Rot.TLabel').pack(side='left', padx=(8, 6))
+            self.cb_formato_pl = ttk.Combobox(
+                rod, textvariable=self.v_formato_pl,
+                values=[rotulo for rotulo, _ in FORMATOS_PLANO],
+                state='readonly', width=23)
+            self.cb_formato_pl.pack(side='left')
+            self.bt_exportar = ttk.Button(
+                rod, text='Exportar', style='Acao.TButton',
+                command=self._exportar_plano, state='disabled')
+            self.bt_exportar.pack(side='left', padx=(8, 0))
 
         def _kml_plano_mudou(self):
             self.bt_calcular.configure(
                 state='normal' if self.kmls_pl and not self.rodando else 'disabled')
             self.bt_exportar.configure(state='disabled')
-            self.bt_google_earth.configure(state='disabled')
             self.planos = None
             for i in self.tv.get_children():
                 self.tv.delete(i)
@@ -464,7 +472,6 @@ def abrir_janela():
                     f"{round(p['n'] * 4.5 / 60 + p['caminhada_km'] / 4.0, 1)} h"))
             self.tv.selection_set('intermediario')
             self.bt_exportar.configure(state='normal')
-            self.bt_google_earth.configure(state='normal')
 
         def _previa_plano(self):
             if not self.planos:
@@ -492,44 +499,25 @@ def abrir_janela():
                 messagebox.showerror(APP, 'A pasta de saída não existe.')
                 return
             try:
-                from penetro3d_amostragem import exportar
+                from penetro3d_amostragem import exportar, exportar_formato
                 pasta = os.path.join(destino, 'plano_amostral')
+                rotulo = self.v_formato_pl.get()
+                formato = dict(FORMATOS_PLANO).get(rotulo, 'kmz')
+                saidas = []
                 for t, tab, planos in self.talhoes_plano:
-                    exportar(planos[chave], pasta)
-                self._escreve(self.txt_pl, '')
-                self._escreve(self.txt_pl, f'{len(self.talhoes_plano)} plano(s) '
-                                           f'exportado(s) para {pasta}', 'ok')
-                self._escreve(self.txt_pl,
-                              'O .geojson é o arquivo que o radar de campo abre.', 'fraco')
-                self.destino = self.pasta_plano = pasta
-                self.bt_cel_plano.configure(state='normal')
-            except Exception as e:                                   # noqa: BLE001
-                messagebox.showerror(APP, str(e))
-
-        def _exportar_google_earth(self):
-            """Gera os KMZ do nível selecionado, prontos para abrir no celular."""
-            if not self.talhoes_plano:
-                return
-            sel = self.tv.selection()
-            chave = sel[0] if sel else 'intermediario'
-            destino = self.v_saida_pl.get().strip()
-            if not os.path.isdir(destino):
-                messagebox.showerror(APP, 'A pasta de saída não existe.')
-                return
-            try:
-                from penetro3d_amostragem import exportar_google_earth
-                pasta = os.path.join(destino, 'plano_amostral')
-                kmzs = [exportar_google_earth(planos[chave], pasta)
-                        for _, _, planos in self.talhoes_plano]
+                    if formato == 'todos':
+                        saidas.extend(exportar(planos[chave], pasta).values())
+                    else:
+                        saidas.append(exportar_formato(planos[chave], pasta, formato))
                 self._escreve(self.txt_pl, '')
                 self._escreve(self.txt_pl,
-                              f'{len(kmzs)} arquivo(s) do Google Earth salvo(s) em {pasta}',
+                              f'{len(saidas)} arquivo(s) em {rotulo} salvo(s) em {pasta}',
                               'ok')
-                self._escreve(
-                    self.txt_pl,
-                    'Envie o .kmz ao celular e escolha “Abrir com Google Earth”.', 'fraco')
-                self.destino = self.pasta_plano = pasta
-                self.bt_cel_plano.configure(state='normal')
+                if formato == 'kmz':
+                    self._escreve(
+                        self.txt_pl,
+                        'O formato padrão abre diretamente no Google Earth do celular.',
+                        'fraco')
             except Exception as e:                                   # noqa: BLE001
                 messagebox.showerror(APP, str(e))
 

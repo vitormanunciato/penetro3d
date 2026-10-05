@@ -7,7 +7,8 @@ import pytest
 from shapely.geometry import Point
 
 from penetro3d_amostragem import (NIVEIS, densidade, espacamento, exportar,
-                                  exportar_google_earth, planejar)
+                                  exportar_formato, exportar_google_earth, planejar)
+from penetro3d_app import FORMATO_PLANO_PADRAO, FORMATOS_PLANO
 from penetro3d_core import MIN_PONTOS, carregar_talhoes
 
 
@@ -90,6 +91,34 @@ def test_exportacao_google_earth_grava_somente_kmz(talhoes, tmp_path):
 
     assert caminho.endswith('.kmz')
     assert [f.suffix for f in tmp_path.iterdir()] == ['.kmz']
+
+
+@pytest.mark.parametrize('formato, extensao', [
+    ('kmz', '.kmz'),
+    ('kml', '.kml'),
+    ('gpx', '.gpx'),
+    ('geojson', '.geojson'),
+    ('csv', '.csv'),
+])
+def test_exporta_somente_o_formato_escolhido(talhoes, tmp_path, formato, extensao):
+    plano = planejar(talhoes[0], 'intermediario')
+
+    caminho = exportar_formato(plano, str(tmp_path), formato)
+
+    assert caminho.endswith(extensao)
+    assert [f.suffix for f in tmp_path.iterdir()] == [extensao]
+
+
+def test_rejeita_formato_de_exportacao_desconhecido(talhoes, tmp_path):
+    plano = planejar(talhoes[0], 'intermediario')
+
+    with pytest.raises(ValueError, match='Formato de exportação desconhecido'):
+        exportar_formato(plano, str(tmp_path), 'invalido')
+
+
+def test_google_earth_e_o_formato_padrao_da_interface():
+    assert FORMATO_PLANO_PADRAO == 'Google Earth (.KMZ)'
+    assert dict(FORMATOS_PLANO)[FORMATO_PLANO_PADRAO] == 'kmz'
 
 
 def test_arquivos_de_campo_registram_autoria(talhoes, tmp_path):

@@ -4,7 +4,7 @@
 #
 # Para lançar uma versão nova:
 #   1. mude VERSAO em app/penetro3d_versao.py
-#   2. git commit, depois:  git tag -a v1.4.0 -m "o que mudou"  &&  git push --follow-tags
+#   2. git commit, depois:  git tag -a vX.Y.Z -m "o que mudou"  &&  git push --follow-tags
 #   O texto da tag vira as notas da versão (o "O que mudou" dentro do programa).
 name: Instalador
 

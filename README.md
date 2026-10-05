@@ -10,7 +10,7 @@ Mapas 3D de compactação do solo a partir dos contornos dos talhões (KML) e da
 - **PDF** para arquivo e impressão: mapas por camada, espessura acima do limite, profundidade da resistência máxima, gráfico por ponto e tabela com uma linha por ponto;
 - **CSVs** com os perfis brutos e a grade interpolada.
 
-Também planeja a coleta (malha hexagonal em três níveis de densidade) e leva o plano ao celular, com um radar que guia até cada ponto pelo GPS.
+Também planeja a coleta (malha hexagonal em três níveis de densidade) e exporta o plano para Google Earth, GPS, SIG ou planilha.
 
 ## Instalar (Windows 10/11, 64 bits)
 
@@ -25,7 +25,7 @@ Também planeja a coleta (malha hexagonal em três níveis de densidade) e leva 
 
 | Aba | Entrada | Saída |
 |---|---|---|
-| **1 · Planejar coleta** | KML dos talhões | pontos em KML/KMZ para Google Earth, GPX, GeoJSON e CSV, e um QR code para abrir o radar no celular |
+| **1 · Planejar coleta** | KML dos talhões | pontos em KMZ/KML para Google Earth, GPX, GeoJSON ou CSV |
 | **2 · Gerar relatórios** | nome do projeto, KML dos talhões, uma planilha do Falker | uma pasta por talhão com HTML 3D, PDF e CSVs |
 
 Os pontos da planilha são distribuídos entre os talhões pela posição GPS. Um ponto fora do polígono, a até 30 m da divisa, entra como "borda". Um ponto fora de todos os talhões aparece em `pontos_nao_atribuidos.csv`. Antes de gerar, o painel de conferência avisa sobre perfis incompletos, leituras atípicas (pedra, raiz) e densidade amostral baixa.
@@ -34,11 +34,10 @@ Para experimentar, use os arquivos da pasta `exemplos`, que também é instalada
 
 ### Abrir o plano no Google Earth do celular
 
-Depois de calcular a malha, selecione o nível e clique em **Google Earth (.KMZ)**.
+Depois de calcular a malha, selecione o nível, mantenha **Google Earth (.KMZ)** como formato e clique em **Exportar**.
 Envie o arquivo `.kmz` ao celular e escolha **Abrir com Google Earth**. Ele contém o
 limite do talhão, os pontos numerados, a ordem de coleta e a rota sugerida. A linha
-liga os pontos para orientar a caminhada; ela não é uma rota por estradas. Para
-registrar os pontos já coletados, use o radar de campo do Penetro3D.
+liga os pontos para orientar a caminhada; ela não é uma rota por estradas.
 
 ## Como o mapa é feito, em resumo
 
@@ -66,24 +65,22 @@ Para conhecer o fluxo antes de trabalhar com dados próprios, use os arquivos fi
 3. Escolha a densidade da malha: menor, recomendada ou maior.
 4. Confira no mapa se os pontos estão distribuídos corretamente dentro dos limites.
 5. Exporte o formato adequado ao trabalho:
-   - **Google Earth (.KMZ):** opção mais simples para visualizar o limite, os pontos e a sequência no celular;
-   - **Radar de campo:** guia por GPS e permite marcar os pontos já coletados;
+   - **Google Earth (.KMZ):** opção padrão e mais simples para visualizar o limite, os pontos e a sequência no celular;
+   - **Google Earth (.KML):** alternativa sem compactação para sistemas que exigem KML;
    - **GPX, GeoJSON ou CSV:** integração com outros aplicativos e equipamentos.
 
 ### 3. Leve o plano ao celular
 
-Para usar o Google Earth, envie o `.kmz` ao celular, toque no arquivo e escolha **Abrir com Google Earth**. A linha exibida é uma sugestão de sequência entre os pontos, não uma rota por estradas.
-
-Para usar o radar, clique em **Ver no celular**, conecte o computador e o celular à mesma rede Wi-Fi e leia o QR code. Mantenha a tela do Penetro3D aberta enquanto estiver usando o radar.
+Envie o `.kmz` ao celular, toque no arquivo e escolha **Abrir com Google Earth**. A linha exibida é uma sugestão de sequência entre os pontos, não uma rota por estradas.
 
 ### 4. Faça a coleta no campo
 
 1. Vá até cada ponto planejado e confirme a posição pelo GPS.
 2. Realize a leitura com o penetrômetro conforme o procedimento da equipe.
-3. No radar, marque o ponto como concluído antes de seguir para o próximo.
+3. Registre na ficha ou no procedimento da equipe qual ponto foi concluído antes de seguir para o próximo.
 4. Ao terminar, exporte a planilha no software do Falker sem alterar nomes de colunas, coordenadas ou valores.
 
-> **Atenção:** a precisão do GPS do celular varia. Use o radar como orientação de navegação, não como substituto de um receptor de maior precisão quando o protocolo exigir posicionamento rigoroso.
+> **Atenção:** a precisão do GPS do celular varia. Use o Google Earth como orientação de navegação, não como substituto de um receptor de maior precisão quando o protocolo exigir posicionamento rigoroso.
 
 ### 5. Gere os relatórios
 
@@ -111,7 +108,7 @@ O repositório é público e **não contém dados reais de nenhuma propriedade**
 
 ```bash
 pip install -r requirements.txt
-python -m pytest testes                          # 45 testes, ~10 s
+python -m pytest testes                          # 52 testes, ~10 s
 python app/penetro3d_app.py                      # abre a janela
 python app/penetro3d_app.py --cli --projeto Teste \
   --kml exemplos/talhoes_exemplo.kml --xlsx exemplos/penetrometria_exemplo.xlsx --saida saidas
@@ -131,7 +128,7 @@ O script extrai o Python oficial para Windows dos MSIs do python.org, instala os
 **Lançar uma versão:**
 
 1. Mude `VERSAO` em `app/penetro3d_versao.py`.
-2. Faça o commit e rode `git tag -a v1.4.0 -m "o que mudou"` e depois `git push --follow-tags`.
+2. Faça o commit, crie uma tag `vX.Y.Z` igual à versão do código e rode `git push --follow-tags`.
 3. O workflow testa, monta o instalador, instala num Windows limpo, gera os relatórios do exemplo e publica a versão. O texto da tag vira o "O que mudou" que aparece no programa.
 
 ## Estrutura

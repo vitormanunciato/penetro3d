@@ -5,8 +5,10 @@ Como usar
 
 1. Abra o Penetro3D pelo menu Iniciar ou pelo atalho na área de trabalho.
 2. Aba "Planejar coleta": escolha o KML do talhão e veja quantos pontos coletar
-   em cada nível (mínimo, intermediário, alto). O botão "Google Earth (.KMZ)"
-   gera o limite do talhão, os pontos numerados e a rota para abrir no celular.
+   em cada nível (mínimo, intermediário, alto). Em "Formato", o Google Earth
+   (.KMZ) já vem selecionado. Clique em "Exportar" para gerar o limite do talhão,
+   os pontos numerados e a rota para abrir no celular. Também há opções KML, GPX,
+   GeoJSON, CSV e todos os formatos.
 3. Aba "Gerar relatórios": dê um nome ao projeto, escolha os KML dos talhões e a
    planilha do Falker, confira o painel de conferência e clique em Gerar.
 4. Cada talhão ganha uma pasta com o relatório 3D (HTML), o PDF e as tabelas (CSV).

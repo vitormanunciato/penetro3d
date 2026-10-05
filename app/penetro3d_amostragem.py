@@ -437,24 +437,36 @@ def _gravar_kmz(base, kml):
     return caminho
 
 
+def exportar_formato(plano, pasta, formato='kmz'):
+    """Grava apenas o formato escolhido e devolve o caminho criado."""
+    formatos = {'kmz', 'kml', 'gpx', 'geojson', 'csv'}
+    if formato not in formatos:
+        raise ValueError(f'Formato de exportação desconhecido: {formato}')
+
+    base = _base_saida(plano, pasta)
+    caminho = f'{base}.{formato}'
+    if formato == 'kmz':
+        return _gravar_kmz(base, _kml(plano))
+    if formato == 'csv':
+        plano['pontos'].to_csv(caminho, index=False)
+        return caminho
+    if formato == 'geojson':
+        with open(caminho, 'w', encoding='utf-8') as f:
+            json.dump(_geojson(plano), f, ensure_ascii=False, separators=(',', ':'))
+        return caminho
+
+    conteudo = _kml(plano) if formato == 'kml' else _gpx(plano)
+    with open(caminho, 'w', encoding='utf-8') as f:
+        f.write(conteudo)
+    return caminho
+
+
 def exportar_google_earth(plano, pasta):
     """Grava somente o KMZ de campo e devolve seu caminho."""
-    return _gravar_kmz(_base_saida(plano, pasta), _kml(plano))
+    return exportar_formato(plano, pasta, 'kmz')
 
 
 def exportar(plano, pasta):
     """Grava KML/KMZ, GPX, CSV e GeoJSON. Devolve os caminhos criados."""
-    base = _base_saida(plano, pasta)
-    saidas = {}
-    kml = _kml(plano)
-    for ext, conteudo in (('kml', kml), ('gpx', _gpx(plano))):
-        with open(f'{base}.{ext}', 'w', encoding='utf-8') as f:
-            f.write(conteudo)
-        saidas[ext] = f'{base}.{ext}'
-    saidas['kmz'] = _gravar_kmz(base, kml)
-    plano['pontos'].to_csv(f'{base}.csv', index=False)
-    saidas['csv'] = f'{base}.csv'
-    with open(f'{base}.geojson', 'w', encoding='utf-8') as f:
-        json.dump(_geojson(plano), f, ensure_ascii=False, separators=(',', ':'))
-    saidas['geojson'] = f'{base}.geojson'
-    return saidas
+    return {formato: exportar_formato(plano, pasta, formato)
+            for formato in ('kml', 'kmz', 'gpx', 'csv', 'geojson')}
