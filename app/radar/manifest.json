@@ -8,6 +8,7 @@
   "theme_color": "#155A54",
   "description": "Navegação por GPS até os pontos de amostragem planejados no Penetro3D.",
   "icons": [
-    {"src": "icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}
+    {"src": "icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"},
+    {"src": "icone_maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable"}
   ]
 }

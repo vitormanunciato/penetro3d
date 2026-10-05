@@ -1,3 +1,5 @@
+<img src="app/icone.svg" width="72" alt="">
+
 # Penetro3D
 
 Mapas 3D de compactação do solo a partir dos contornos dos talhões (KML) e da planilha do penetrômetro **Falker PenetroLOG**. Para cada talhão o programa entrega:

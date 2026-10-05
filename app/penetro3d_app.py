@@ -106,10 +106,23 @@ def abrir_janela():
                     raiz.iconbitmap(default=ico)
                 except tk.TclError:
                     pass
+            # logo do cabeçalho: o PNG mais próximo da escala da tela (Tk não reamostra bem)
+            self.logo = None
+            alvo = 48 * self.esc
+            lado = min((48, 72, 96), key=lambda n: abs(n - alvo))
+            try:
+                self.logo = tk.PhotoImage(file=os.path.join(AQUI, f'icone_{lado}.png'))
+                if not sys.platform.startswith('win'):
+                    raiz.iconphoto(True, self.logo)
+            except tk.TclError:
+                pass
             self._estilos()
 
             topo = ttk.Frame(raiz, padding=(20, 14, 20, 0))
             topo.pack(fill='x')
+            if self.logo is not None:
+                tk.Label(topo, image=self.logo, bg=FUNDO, bd=0).pack(
+                    side='left', padx=(0, self.px(12)))
             esq = ttk.Frame(topo)
             esq.pack(side='left')
             ttk.Label(esq, text='PENETROMETRIA · RESISTÊNCIA DO SOLO À PENETRAÇÃO',

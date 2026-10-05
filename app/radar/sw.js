@@ -1,8 +1,8 @@
 /* Service worker do radar de campo.
    Cache-first para os próprios arquivos do app. Em campo não há internet, e o app
    não busca mais nada da rede — o plano vem de um arquivo local escolhido pelo usuário. */
-const CACHE = 'penetro3d-radar-v1';
-const ARQUIVOS = ['radar_campo.html', 'manifest.json', 'icone.svg'];
+const CACHE = 'penetro3d-radar-v2';
+const ARQUIVOS = ['radar_campo.html', 'manifest.json', 'icone.svg', 'icone_maskable.svg'];
 
 self.addEventListener('install', ev => {
   ev.waitUntil(caches.open(CACHE).then(c => c.addAll(ARQUIVOS)).then(() => self.skipWaiting()));

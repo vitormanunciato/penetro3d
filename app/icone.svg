@@ -1,3 +1,5 @@
+<!-- Penetro3D: o hexágono da malha de amostragem, com as três classes de
+     resistência (baixa, moderada, restritiva) e a curva do perfil médio em branco. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <defs><clipPath id="hx"><polygon points="32,3 57.1,17.5 57.1,46.5 32,61 6.9,46.5 6.9,17.5"/></clipPath></defs>
   <g clip-path="url(#hx)">

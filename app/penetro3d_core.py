@@ -71,6 +71,9 @@ RAMPA = [[0, '#C7E4AC'], [0.20, '#93CB63'], [0.42, '#5FB63C'], [0.52, '#E8C33A']
          [0.66, '#F7A823'], [0.714, '#EE3124'], [0.85, '#B5201A'], [1, '#6E120E']]
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
+# ícone do programa embutido no relatório (aba do navegador); gerado de app/icone.svg
+FAVICON = ('data:image/svg+xml;base64,'
+           'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPGRlZnM+PGNsaXBQYXRoIGlkPSJoeCI+PHBvbHlnb24gcG9pbnRzPSIzMiwzIDU3LjEsMTcuNSA1Ny4xLDQ2LjUgMzIsNjEgNi45LDQ2LjUgNi45LDE3LjUiLz48L2NsaXBQYXRoPjwvZGVmcz4KICA8ZyBjbGlwLXBhdGg9InVybCgjaHgpIj4KICAgIDxyZWN0IHdpZHRoPSI2NCIgaGVpZ2h0PSIyNSIgZmlsbD0iIzcyQkY0NCIvPgogICAgPHJlY3QgeT0iMjUiIHdpZHRoPSI2NCIgaGVpZ2h0PSIxOCIgZmlsbD0iI0Y3QTgyMyIvPgogICAgPHJlY3QgeT0iNDMiIHdpZHRoPSI2NCIgaGVpZ2h0PSIyMSIgZmlsbD0iI0VFMzEyNCIvPgogIDwvZz4KICA8cGF0aCBkPSJNMjUgMTAgQyAyNiAyMiwgNDYgMjEsIDQ1LjUgMzIgQyA0NSA0MiwgMzIgNDUsIDMxIDU0IiBmaWxsPSJub25lIiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+Cjwvc3ZnPg==')
 PLOTLY_CDN = ('<script src="https://cdnjs.cloudflare.com/ajax/libs/'
               'plotly.js/2.35.2/plotly.min.js"></script>')
 
@@ -718,6 +721,7 @@ def render_html(payload, offline=True):
              .replace('__DATA__', dados))
     return ('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width,initial-scale=1">'
+            f'<link rel="icon" type="image/svg+xml" href="{FAVICON}">'
             '<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>'
             '</head><body>' + corpo + '</body></html>')
 
