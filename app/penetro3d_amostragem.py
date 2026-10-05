@@ -39,6 +39,8 @@ ponto".
 
 import json
 import os
+import zipfile
+from xml.etree import ElementTree as ET
 
 import numpy as np
 import pandas as pd
@@ -291,22 +293,103 @@ def comparar(talhao, epsg=UTM_EPSG, recuo=RECUO_BORDA):
 
 
 # ──────────────────────────────────────────────────────────────────── exportação ──
+KML_NS = 'http://www.opengis.net/kml/2.2'
+
+
+def _aneis_lonlat(plano):
+    """Devolve o contorno métrico do plano em longitude/latitude."""
+    tr = Transformer.from_crs(f'EPSG:{plano["epsg"]}', 'EPSG:4326', always_xy=True)
+    x0, y0 = plano['origem']
+    resultado = []
+    for anel in aneis(plano['poli']):
+        lons, lats = tr.transform([x + x0 for x, _ in anel],
+                                  [y + y0 for _, y in anel])
+        resultado.append(list(zip(lons, lats)))
+    return resultado
+
+
+def _elemento(pai, nome, texto=None, **atributos):
+    e = ET.SubElement(pai, f'{{{KML_NS}}}{nome}', atributos)
+    if texto is not None:
+        e.text = str(texto)
+    return e
+
+
+def _estilos_kml(documento):
+    """Estilos legíveis no campo, inclusive sobre imagem de satélite."""
+    estilo = _elemento(documento, 'Style', id='ponto')
+    icone = _elemento(estilo, 'IconStyle')
+    _elemento(icone, 'color', 'ff2f9e44')
+    _elemento(icone, 'scale', '0.9')
+    etiqueta = _elemento(estilo, 'LabelStyle')
+    _elemento(etiqueta, 'color', 'ffffffff')
+    _elemento(etiqueta, 'scale', '0.75')
+
+    estilo = _elemento(documento, 'Style', id='rota')
+    linha = _elemento(estilo, 'LineStyle')
+    _elemento(linha, 'color', 'ff00a5ff')
+    _elemento(linha, 'width', '4')
+
+    estilo = _elemento(documento, 'Style', id='talhao')
+    linha = _elemento(estilo, 'LineStyle')
+    _elemento(linha, 'color', 'ff00ffff')
+    _elemento(linha, 'width', '3')
+    area = _elemento(estilo, 'PolyStyle')
+    _elemento(area, 'color', '2600ffff')
+
+
 def _kml(plano):
-    p = plano['pontos']
-    marcas = '\n'.join(
-        f'  <Placemark><name>{r.id}</name>'
-        f'<description>ordem {r.ordem} de {len(p)} · {plano["talhao"]}</description>'
-        f'<Point><coordinates>{r.lon:.7f},{r.lat:.7f},0</coordinates></Point></Placemark>'
-        for r in p.itertuples())
-    rota = ' '.join(f'{r.lon:.7f},{r.lat:.7f},0' for r in p.itertuples())
+    """KML de campo para Google Earth: limite, pontos numerados e rota."""
+    ET.register_namespace('', KML_NS)
+    raiz = ET.Element(f'{{{KML_NS}}}kml')
+    documento = _elemento(raiz, 'Document')
     rotulo = NIVEIS.get(plano['nivel'], {}).get('rotulo', plano['nivel'])
-    return f'''<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2"><Document>
-  <name>{plano['talhao']} — amostragem {rotulo}</name>
-{marcas}
-  <Placemark><name>Rota sugerida</name><LineString><tessellate>1</tessellate>
-    <coordinates>{rota}</coordinates></LineString></Placemark>
-</Document></kml>'''
+    _elemento(documento, 'name', f'{plano["talhao"]} — amostragem {rotulo}')
+    _elemento(documento, 'description',
+              f'{plano["n"]} pontos · malha {plano["espacamento_m"]} m · '
+              f'caminhada estimada {plano["caminhada_km"]} km')
+    _estilos_kml(documento)
+
+    limite = _elemento(documento, 'Placemark')
+    _elemento(limite, 'name', 'Limite do talhão')
+    _elemento(limite, 'styleUrl', '#talhao')
+    poligono = _elemento(limite, 'Polygon')
+    _elemento(poligono, 'tessellate', '1')
+    aneis_ll = _aneis_lonlat(plano)
+    for i, anel in enumerate(aneis_ll):
+        borda = _elemento(poligono, 'outerBoundaryIs' if i == 0 else 'innerBoundaryIs')
+        linear = _elemento(borda, 'LinearRing')
+        _elemento(linear, 'coordinates',
+                  ' '.join(f'{lon:.7f},{lat:.7f},0' for lon, lat in anel))
+
+    pasta = _elemento(documento, 'Folder')
+    _elemento(pasta, 'name', 'Pontos de amostragem')
+    for r in plano['pontos'].itertuples():
+        marca = _elemento(pasta, 'Placemark')
+        _elemento(marca, 'name', r.id)
+        _elemento(marca, 'description',
+                  f'Ordem {r.ordem} de {plano["n"]} · {plano["talhao"]}')
+        _elemento(marca, 'styleUrl', '#ponto')
+        dados = _elemento(marca, 'ExtendedData')
+        for nome, valor in (('ordem', r.ordem), ('latitude', f'{r.lat:.7f}'),
+                            ('longitude', f'{r.lon:.7f}')):
+            dado = _elemento(dados, 'Data', name=nome)
+            _elemento(dado, 'value', valor)
+        ponto = _elemento(marca, 'Point')
+        _elemento(ponto, 'coordinates', f'{r.lon:.7f},{r.lat:.7f},0')
+
+    rota = _elemento(documento, 'Placemark')
+    _elemento(rota, 'name', 'Rota sugerida')
+    _elemento(rota, 'description',
+              'Siga a numeração dos pontos. A linha é uma ordem de caminhamento, '
+              'não navegação por estradas.')
+    _elemento(rota, 'styleUrl', '#rota')
+    linha = _elemento(rota, 'LineString')
+    _elemento(linha, 'tessellate', '1')
+    _elemento(linha, 'coordinates', ' '.join(
+        f'{r.lon:.7f},{r.lat:.7f},0' for r in plano['pontos'].itertuples()))
+
+    return ET.tostring(raiz, encoding='utf-8', xml_declaration=True).decode('utf-8')
 
 
 def _gpx(plano):
@@ -320,18 +403,15 @@ def _gpx(plano):
 
 def _geojson(plano):
     """Formato que o radar de campo consome: pontos + contorno + metadados do plano."""
-    tr = Transformer.from_crs(f'EPSG:{plano["epsg"]}', 'EPSG:4326', always_xy=True)
-    x0, y0 = plano['origem']
     feats = [{
         'type': 'Feature',
         'geometry': {'type': 'Point', 'coordinates': [float(r.lon), float(r.lat)]},
         'properties': {'id': r.id, 'ordem': int(r.ordem), 'coletado': False},
     } for r in plano['pontos'].itertuples()]
-    for anel in aneis(plano['poli']):
-        lons, lats = tr.transform([a + x0 for a, _ in anel], [b + y0 for _, b in anel])
+    for anel in _aneis_lonlat(plano):
         feats.append({'type': 'Feature',
                       'geometry': {'type': 'LineString',
-                                   'coordinates': [[a, b] for a, b in zip(lons, lats)]},
+                                   'coordinates': [[a, b] for a, b in anel]},
                       'properties': {'tipo': 'contorno'}})
     return {'type': 'FeatureCollection',
             'properties': {k: plano[k] for k in
@@ -340,15 +420,33 @@ def _geojson(plano):
             'features': feats}
 
 
-def exportar(plano, pasta):
-    """Grava KML, GPX, CSV e GeoJSON. Devolve os caminhos criados."""
+def _base_saida(plano, pasta):
     os.makedirs(pasta, exist_ok=True)
-    base = os.path.join(pasta, f'{slug(plano["talhao"])}_{plano["nivel"]}')
+    return os.path.join(pasta, f'{slug(plano["talhao"])}_{plano["nivel"]}')
+
+
+def _gravar_kmz(base, kml):
+    caminho = f'{base}.kmz'
+    with zipfile.ZipFile(caminho, 'w', compression=zipfile.ZIP_DEFLATED) as pacote:
+        pacote.writestr('doc.kml', kml.encode('utf-8'))
+    return caminho
+
+
+def exportar_google_earth(plano, pasta):
+    """Grava somente o KMZ de campo e devolve seu caminho."""
+    return _gravar_kmz(_base_saida(plano, pasta), _kml(plano))
+
+
+def exportar(plano, pasta):
+    """Grava KML/KMZ, GPX, CSV e GeoJSON. Devolve os caminhos criados."""
+    base = _base_saida(plano, pasta)
     saidas = {}
-    for ext, conteudo in (('kml', _kml(plano)), ('gpx', _gpx(plano))):
+    kml = _kml(plano)
+    for ext, conteudo in (('kml', kml), ('gpx', _gpx(plano))):
         with open(f'{base}.{ext}', 'w', encoding='utf-8') as f:
             f.write(conteudo)
         saidas[ext] = f'{base}.{ext}'
+    saidas['kmz'] = _gravar_kmz(base, kml)
     plano['pontos'].to_csv(f'{base}.csv', index=False)
     saidas['csv'] = f'{base}.csv'
     with open(f'{base}.geojson', 'w', encoding='utf-8') as f:

@@ -23,12 +23,20 @@ Também planeja a coleta (malha hexagonal em três níveis de densidade) e leva 
 
 | Aba | Entrada | Saída |
 |---|---|---|
-| **1 · Planejar coleta** | KML dos talhões | pontos em KML, GPX, GeoJSON e CSV, e um QR code para abrir o radar no celular |
+| **1 · Planejar coleta** | KML dos talhões | pontos em KML/KMZ para Google Earth, GPX, GeoJSON e CSV, e um QR code para abrir o radar no celular |
 | **2 · Gerar relatórios** | nome do projeto, KML dos talhões, uma planilha do Falker | uma pasta por talhão com HTML 3D, PDF e CSVs |
 
 Os pontos da planilha são distribuídos entre os talhões pela posição GPS. Um ponto fora do polígono, a até 30 m da divisa, entra como "borda". Um ponto fora de todos os talhões aparece em `pontos_nao_atribuidos.csv`. Antes de gerar, o painel de conferência avisa sobre perfis incompletos, leituras atípicas (pedra, raiz) e densidade amostral baixa.
 
 Para experimentar, use os arquivos da pasta `exemplos`, que também é instalada junto com o programa.
+
+### Abrir o plano no Google Earth do celular
+
+Depois de calcular a malha, selecione o nível e clique em **Google Earth (.KMZ)**.
+Envie o arquivo `.kmz` ao celular e escolha **Abrir com Google Earth**. Ele contém o
+limite do talhão, os pontos numerados, a ordem de coleta e a rota sugerida. A linha
+liga os pontos para orientar a caminhada; ela não é uma rota por estradas. Para
+registrar os pontos já coletados, use o radar de campo do Penetro3D.
 
 ## Como o mapa é feito, em resumo
 
@@ -46,7 +54,7 @@ O repositório é público e **não contém dados reais de nenhuma propriedade**
 
 ```bash
 pip install -r requirements.txt
-python -m pytest testes                          # 41 testes, ~10 s
+python -m pytest testes                          # 43 testes, ~10 s
 python app/penetro3d_app.py                      # abre a janela
 python app/penetro3d_app.py --cli --projeto Teste \
   --kml exemplos/talhoes_exemplo.kml --xlsx exemplos/penetrometria_exemplo.xlsx --saida saidas

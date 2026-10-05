@@ -1,8 +1,12 @@
+import zipfile
+from xml.etree import ElementTree as ET
+
 import numpy as np
 import pytest
 from shapely.geometry import Point
 
-from penetro3d_amostragem import NIVEIS, densidade, espacamento, exportar, planejar
+from penetro3d_amostragem import (NIVEIS, densidade, espacamento, exportar,
+                                  exportar_google_earth, planejar)
 from penetro3d_core import MIN_PONTOS, carregar_talhoes
 
 
@@ -50,9 +54,39 @@ def test_talhao_pequeno_aplica_o_piso():
 
 def test_exporta_arquivos_de_campo(talhoes, tmp_path):
     p = planejar(talhoes[0], 'intermediario')
-    exportar(p, str(tmp_path))
+    saidas = exportar(p, str(tmp_path))
     nomes = {f.suffix for f in tmp_path.rglob('*') if f.is_file()}
-    assert {'.kml', '.gpx', '.geojson', '.csv'} <= nomes
+    assert {'.kml', '.kmz', '.gpx', '.geojson', '.csv'} <= nomes
+    assert saidas['kmz'].endswith('.kmz')
+
+
+def test_kmz_google_earth_tem_contorno_pontos_e_rota(talhoes, tmp_path):
+    plano = planejar(talhoes[0], 'intermediario')
+    kmz = exportar(plano, str(tmp_path))['kmz']
+
+    with zipfile.ZipFile(kmz) as pacote:
+        assert pacote.namelist() == ['doc.kml']
+        raiz = ET.fromstring(pacote.read('doc.kml'))
+
+    ns = {'kml': 'http://www.opengis.net/kml/2.2'}
+    nomes = [e.text for e in raiz.findall('.//kml:Placemark/kml:name', ns)]
+    assert 'Limite do talhão' in nomes
+    assert 'Rota sugerida' in nomes
+    assert plano['pontos'].iloc[0]['id'] in nomes
+    assert len(raiz.findall('.//kml:Point', ns)) == plano['n']
+    assert raiz.find('.//kml:Polygon', ns) is not None
+    assert raiz.find('.//kml:LineString', ns) is not None
+    assert raiz.find('.//kml:Style[@id="ponto"]', ns) is not None
+    assert raiz.find('.//kml:Style[@id="rota"]', ns) is not None
+    assert raiz.find('.//kml:Style[@id="talhao"]', ns) is not None
+
+
+def test_exportacao_google_earth_grava_somente_kmz(talhoes, tmp_path):
+    plano = planejar(talhoes[0], 'intermediario')
+    caminho = exportar_google_earth(plano, str(tmp_path))
+
+    assert caminho.endswith('.kmz')
+    assert [f.suffix for f in tmp_path.iterdir()] == ['.kmz']
 
 
 def test_rota_sem_saltos_grandes(talhoes):

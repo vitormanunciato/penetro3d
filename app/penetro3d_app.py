@@ -379,6 +379,10 @@ def abrir_janela():
             self.bt_exportar = ttk.Button(rod, text='Exportar plano', style='Acao.TButton',
                                           command=self._exportar_plano, state='disabled')
             self.bt_exportar.pack(side='left')
+            self.bt_google_earth = ttk.Button(
+                rod, text='Google Earth (.KMZ)', command=self._exportar_google_earth,
+                state='disabled')
+            self.bt_google_earth.pack(side='left', padx=(8, 0))
             self.bt_cel_plano = ttk.Button(
                 rod, text='Enviar ao celular', state='disabled',
                 command=lambda: self._no_celular(self.pasta_plano, 'Plano de amostragem'))
@@ -388,6 +392,7 @@ def abrir_janela():
             self.bt_calcular.configure(
                 state='normal' if self.kmls_pl and not self.rodando else 'disabled')
             self.bt_exportar.configure(state='disabled')
+            self.bt_google_earth.configure(state='disabled')
             self.planos = None
             for i in self.tv.get_children():
                 self.tv.delete(i)
@@ -457,6 +462,7 @@ def abrir_janela():
                     f"{round(p['n'] * 4.5 / 60 + p['caminhada_km'] / 4.0, 1)} h"))
             self.tv.selection_set('intermediario')
             self.bt_exportar.configure(state='normal')
+            self.bt_google_earth.configure(state='normal')
 
         def _previa_plano(self):
             if not self.planos:
@@ -493,6 +499,33 @@ def abrir_janela():
                                            f'exportado(s) para {pasta}', 'ok')
                 self._escreve(self.txt_pl,
                               'O .geojson é o arquivo que o radar de campo abre.', 'fraco')
+                self.destino = self.pasta_plano = pasta
+                self.bt_cel_plano.configure(state='normal')
+            except Exception as e:                                   # noqa: BLE001
+                messagebox.showerror(APP, str(e))
+
+        def _exportar_google_earth(self):
+            """Gera os KMZ do nível selecionado, prontos para abrir no celular."""
+            if not self.talhoes_plano:
+                return
+            sel = self.tv.selection()
+            chave = sel[0] if sel else 'intermediario'
+            destino = self.v_saida_pl.get().strip()
+            if not os.path.isdir(destino):
+                messagebox.showerror(APP, 'A pasta de saída não existe.')
+                return
+            try:
+                from penetro3d_amostragem import exportar_google_earth
+                pasta = os.path.join(destino, 'plano_amostral')
+                kmzs = [exportar_google_earth(planos[chave], pasta)
+                        for _, _, planos in self.talhoes_plano]
+                self._escreve(self.txt_pl, '')
+                self._escreve(self.txt_pl,
+                              f'{len(kmzs)} arquivo(s) do Google Earth salvo(s) em {pasta}',
+                              'ok')
+                self._escreve(
+                    self.txt_pl,
+                    'Envie o .kmz ao celular e escolha “Abrir com Google Earth”.', 'fraco')
                 self.destino = self.pasta_plano = pasta
                 self.bt_cel_plano.configure(state='normal')
             except Exception as e:                                   # noqa: BLE001
