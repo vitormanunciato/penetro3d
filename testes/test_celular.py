@@ -1,4 +1,5 @@
 import urllib.request
+from pathlib import Path
 
 from penetro3d_celular import matriz_qr, servir
 
@@ -12,6 +13,7 @@ def test_servidor_entrega_indice_e_relatorio(tmp_path):
         base = f'http://127.0.0.1:{local}/'
         indice = urllib.request.urlopen(base, timeout=5).read().decode('utf-8')
         assert 'Talhao_A' in indice or 'Talhão A' in indice
+        assert 'ANUNCIATO, V.M.' in indice
         rel = urllib.request.urlopen(base + 'Talhao_A/Talhao_A.html', timeout=5).read()
         assert b'ok' in rel
     finally:
@@ -21,3 +23,9 @@ def test_servidor_entrega_indice_e_relatorio(tmp_path):
 def test_qr_e_quadrado():
     m = matriz_qr('http://192.168.0.10:8000/')
     assert len(m) == len(m[0]) and len(m) >= 21
+
+
+def test_radar_mostra_autoria():
+    from conftest import RAIZ
+    radar = Path(RAIZ, 'app', 'radar', 'radar_campo.html').read_text(encoding='utf-8')
+    assert 'ANUNCIATO, V.M.' in radar

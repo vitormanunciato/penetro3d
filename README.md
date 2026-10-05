@@ -2,6 +2,8 @@
 
 # Penetro3D
 
+**Autoria:** ANUNCIATO, V.M.
+
 Mapas 3D de compactação do solo a partir dos contornos dos talhões (KML) e da planilha do penetrômetro **Falker PenetroLOG**. Para cada talhão o programa entrega:
 
 - **relatório 3D interativo (HTML)**: bloco de resistência à penetração que gira com o mouse, cortes por camada, perfis e método. Abre em qualquer navegador, sem internet, inclusive no celular;
@@ -54,7 +56,7 @@ O repositório é público e **não contém dados reais de nenhuma propriedade**
 
 ```bash
 pip install -r requirements.txt
-python -m pytest testes                          # 43 testes, ~10 s
+python -m pytest testes                          # 45 testes, ~10 s
 python app/penetro3d_app.py                      # abre a janela
 python app/penetro3d_app.py --cli --projeto Teste \
   --kml exemplos/talhoes_exemplo.kml --xlsx exemplos/penetrometria_exemplo.xlsx --saida saidas

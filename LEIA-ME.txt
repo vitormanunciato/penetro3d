@@ -1,4 +1,5 @@
 PENETRO3D — mapas 3D de compactação do solo
+Autoria: ANUNCIATO, V.M.
 
 Como usar
 

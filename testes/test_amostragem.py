@@ -1,3 +1,4 @@
+import json
 import zipfile
 from xml.etree import ElementTree as ET
 
@@ -66,7 +67,8 @@ def test_kmz_google_earth_tem_contorno_pontos_e_rota(talhoes, tmp_path):
 
     with zipfile.ZipFile(kmz) as pacote:
         assert pacote.namelist() == ['doc.kml']
-        raiz = ET.fromstring(pacote.read('doc.kml'))
+        kml = pacote.read('doc.kml')
+        raiz = ET.fromstring(kml)
 
     ns = {'kml': 'http://www.opengis.net/kml/2.2'}
     nomes = [e.text for e in raiz.findall('.//kml:Placemark/kml:name', ns)]
@@ -79,6 +81,7 @@ def test_kmz_google_earth_tem_contorno_pontos_e_rota(talhoes, tmp_path):
     assert raiz.find('.//kml:Style[@id="ponto"]', ns) is not None
     assert raiz.find('.//kml:Style[@id="rota"]', ns) is not None
     assert raiz.find('.//kml:Style[@id="talhao"]', ns) is not None
+    assert b'ANUNCIATO, V.M.' in kml
 
 
 def test_exportacao_google_earth_grava_somente_kmz(talhoes, tmp_path):
@@ -87,6 +90,15 @@ def test_exportacao_google_earth_grava_somente_kmz(talhoes, tmp_path):
 
     assert caminho.endswith('.kmz')
     assert [f.suffix for f in tmp_path.iterdir()] == ['.kmz']
+
+
+def test_arquivos_de_campo_registram_autoria(talhoes, tmp_path):
+    plano = planejar(talhoes[0], 'intermediario')
+    saidas = exportar(plano, str(tmp_path))
+
+    assert 'ANUNCIATO, V.M.' in open(saidas['gpx'], encoding='utf-8').read()
+    with open(saidas['geojson'], encoding='utf-8') as f:
+        assert json.load(f)['properties']['autor'] == 'ANUNCIATO, V.M.'
 
 
 def test_rota_sem_saltos_grandes(talhoes):

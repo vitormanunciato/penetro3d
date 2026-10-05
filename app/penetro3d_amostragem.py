@@ -49,6 +49,7 @@ from pyproj import Transformer
 from shapely.affinity import rotate, translate
 
 from penetro3d_core import UTM_EPSG, ErroDeDados, _projetar, aneis, slug
+from penetro3d_versao import AUTOR
 
 # ─────────────────────────────────────────────────────────────── configuração ──
 RECUO_BORDA = 15.0     # m — não amostrar na bordadura/carreador, que é sempre mais duro
@@ -347,7 +348,7 @@ def _kml(plano):
     _elemento(documento, 'name', f'{plano["talhao"]} — amostragem {rotulo}')
     _elemento(documento, 'description',
               f'{plano["n"]} pontos · malha {plano["espacamento_m"]} m · '
-              f'caminhada estimada {plano["caminhada_km"]} km')
+              f'caminhada estimada {plano["caminhada_km"]} km · Autoria: {AUTOR}')
     _estilos_kml(documento)
 
     limite = _elemento(documento, 'Placemark')
@@ -398,7 +399,9 @@ def _gpx(plano):
                     for r in plano['pontos'].itertuples())
     return (f'<?xml version="1.0" encoding="UTF-8"?>\n'
             f'<gpx version="1.1" creator="Penetro3D" '
-            f'xmlns="http://www.topografix.com/GPX/1/1">\n{pts}\n</gpx>')
+            f'xmlns="http://www.topografix.com/GPX/1/1">\n'
+            f'  <metadata><author><name>{AUTOR}</name></author></metadata>\n'
+            f'{pts}\n</gpx>')
 
 
 def _geojson(plano):
@@ -413,10 +416,12 @@ def _geojson(plano):
                       'geometry': {'type': 'LineString',
                                    'coordinates': [[a, b] for a, b in anel]},
                       'properties': {'tipo': 'contorno'}})
+    propriedades = {k: plano[k] for k in
+                    ('talhao', 'nivel', 'n', 'area_ha', 'densidade_real',
+                     'espacamento_m', 'cobertura_m', 'caminhada_km')}
+    propriedades['autor'] = AUTOR
     return {'type': 'FeatureCollection',
-            'properties': {k: plano[k] for k in
-                           ('talhao', 'nivel', 'n', 'area_ha', 'densidade_real',
-                            'espacamento_m', 'cobertura_m', 'caminhada_km')},
+            'properties': propriedades,
             'features': feats}
 
 

@@ -27,6 +27,7 @@ import socket
 import socketserver
 import threading
 
+from penetro3d_versao import AUTOR
 
 def ip_local():
     """IP da máquina na rede local. Não envia pacote — só resolve a rota de saída."""
@@ -40,12 +41,13 @@ def ip_local():
         s.close()
 
 
-ORDEM = {'html': 0, 'pdf': 1, 'geojson': 2, 'kml': 3, 'gpx': 4, 'csv': 5}
+ORDEM = {'html': 0, 'pdf': 1, 'geojson': 2, 'kmz': 3, 'kml': 4, 'gpx': 5, 'csv': 6}
 
 ROTULOS = {
     'html': 'Relatório 3D interativo',
     'pdf': 'Relatório em PDF',
     'geojson': 'Plano para o radar de campo',
+    'kmz': 'Plano para o Google Earth',
     'kml': 'Plano para o Google Earth',
     'gpx': 'Plano para GPS de mão',
     'csv': 'Dados em planilha',
@@ -65,7 +67,7 @@ def _rotulo(nome, ext):
                  'resumo_do_projeto': 'Resumo do projeto',
                  'pontos_nao_atribuidos': 'Pontos fora dos talhões'}
         return finos.get(talo, base)
-    if ext in ('geojson', 'kml', 'gpx'):
+    if ext in ('geojson', 'kmz', 'kml', 'gpx'):
         for nivel in ('minimo', 'intermediario', 'alto'):
             if talo.endswith('_' + nivel):
                 bonito = {'minimo': 'mínimo', 'intermediario': 'intermediário',
@@ -130,7 +132,8 @@ footer{{margin-top:26px;color:#6C7B75;font-size:12.5px;line-height:1.5}}
 <p class="sub">Toque para abrir.</p>
 {corpo}
 <footer>Servido pelo Penetro3D no computador, pela rede local.
-Ao fechar a janela no computador, este endereço para de funcionar.</footer>
+Ao fechar a janela no computador, este endereço para de funcionar.<br>
+Autoria: {html.escape(AUTOR)}</footer>
 </div></body></html>'''
 
 

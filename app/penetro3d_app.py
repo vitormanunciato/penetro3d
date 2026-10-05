@@ -6,8 +6,8 @@ Penetro3D — planejamento amostral e relatórios de compactação do solo.
 Duas etapas, duas abas:
 
   1 · Planejar coleta   KML → malha hexagonal em três níveis de densidade, com rota
-                        de caminhamento, exportada em KML/GPX/CSV/GeoJSON. O GeoJSON
-                        é o que o radar de campo (radar/radar_campo.html) consome.
+                        de caminhamento, exportada em KML/KMZ/GPX/CSV/GeoJSON. O
+                        GeoJSON é o que o radar de campo consome.
 
   2 · Gerar relatórios  KML + planilha do Falker → conferência dos dados antes de
                         processar, depois HTML interativo, PDF e CSV por talhão.
@@ -32,7 +32,7 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 if AQUI not in sys.path:
     sys.path.insert(0, AQUI)
 
-from penetro3d_versao import REPO_GITHUB, VERSAO  # noqa: E402
+from penetro3d_versao import AUTOR, REPO_GITHUB, VERSAO  # noqa: E402
 
 APP = 'Penetro3D'
 
@@ -157,6 +157,8 @@ def abrir_janela():
             self.aba_rel = ttk.Frame(self.abas, padding=16)
             self.abas.add(self.aba_pl, text='  1 · Planejar coleta  ')
             self.abas.add(self.aba_rel, text='  2 · Gerar relatórios  ')
+            ttk.Label(raiz, text=f'Autoria: {AUTOR}', style='Dica.TLabel').pack(
+                anchor='e', padx=20, pady=(0, 10))
 
             self._montar_planejamento()
             self._montar_relatorios()

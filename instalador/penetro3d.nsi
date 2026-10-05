@@ -49,7 +49,7 @@ Var Atualizando
 !define MUI_UNICON "${ICONE}"
 !define MUI_ABORTWARNING
 !define MUI_WELCOMEPAGE_TITLE "Penetro3D ${VERSAO}"
-!define MUI_WELCOMEPAGE_TEXT "Mapas 3D de compactação do solo a partir dos talhões (KML) e da planilha do penetrômetro Falker.$\r$\n$\r$\nA instalação é só para o seu usuário, não pede senha de administrador e já inclui tudo o que o programa precisa.$\r$\n$\r$\nSe uma versão anterior estiver instalada, ela será atualizada — seus relatórios não são tocados."
+!define MUI_WELCOMEPAGE_TEXT "Mapas 3D de compactação do solo a partir dos talhões (KML) e da planilha do penetrômetro Falker.$\r$\n$\r$\nAutoria: ANUNCIATO, V.M.$\r$\n$\r$\nA instalação é só para o seu usuário, não pede senha de administrador e já inclui tudo o que o programa precisa.$\r$\n$\r$\nSe uma versão anterior estiver instalada, ela será atualizada — seus relatórios não são tocados."
 !define MUI_FINISHPAGE_TITLE "Penetro3D instalado"
 !define MUI_FINISHPAGE_TEXT "O Penetro3D está no menu Iniciar. Na primeira vez, experimente com os arquivos da pasta exemplos (dentro da pasta do programa)."
 !define MUI_FINISHPAGE_RUN

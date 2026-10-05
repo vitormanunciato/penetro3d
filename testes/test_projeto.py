@@ -36,6 +36,7 @@ def test_html_e_autocontido_e_traz_os_dados(saida):
     else:                                                  # rodando do código, sem vendor/
         assert 'cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.2/' in html
     assert 'Penetro3D' in html
+    assert 'ANUNCIATO, V.M.' in html
 
 
 def test_pdf_tem_paginas(saida):
@@ -43,6 +44,7 @@ def test_pdf_tem_paginas(saida):
     with open(pdf, 'rb') as f:
         conteudo = f.read()
     assert conteudo.startswith(b'%PDF') and conteudo.count(b'/Type /Page') >= 4
+    assert b'ANUNCIATO, V.M.' in conteudo
 
 
 def test_resumo_csv(saida):

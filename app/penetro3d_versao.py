@@ -7,6 +7,7 @@ crie a tag `vX.Y.Z` e envie.
 """
 
 VERSAO = '1.4.0'
+AUTOR = 'ANUNCIATO, V.M.'
 
 # repositório que distribui as atualizações
 REPO_GITHUB = 'vitormanunciato/penetro3d'

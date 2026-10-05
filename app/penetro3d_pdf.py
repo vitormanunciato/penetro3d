@@ -35,6 +35,7 @@ from reportlab.platypus import (BaseDocTemplate, Frame, Image, PageBreak,  # noq
                                 PageTemplate, Paragraph, Spacer, Table, TableStyle)
 
 from penetro3d_core import CMAX_KPA, LIM_CRIT, LIM_MOD, RAMPA, aneis, num_br, num_cm  # noqa: E402
+from penetro3d_versao import AUTOR  # noqa: E402
 
 VERDE1, CINZA, AMBAR, VERMELHO = '#155A54', '#727D84', '#F7A823', '#EE3124'
 TINTA, TINTA2, TINTA3 = '#12211D', '#3E4F49', '#6C7B75'
@@ -404,12 +405,13 @@ def gerar_pdf(caminho, ctx, pontos, prof, CI, R, S, medias, esp, zmax,
             canv.setFont('Helvetica', 6.6); canv.setFillColor(colors.HexColor(TINTA3))
             canv.drawString(2 * cm, A4[1] - 1.15 * cm, f"{ctx['projeto']} · {ctx['talhao']}")
             canv.drawRightString(A4[0] - 2 * cm, 1.15 * cm, f'{doc.page}')
-            canv.drawString(2 * cm, 1.15 * cm, 'Penetro3D · relatório de penetrometria')
+            canv.drawString(2 * cm, 1.15 * cm,
+                            f'Penetro3D · relatório de penetrometria · {AUTOR}')
             canv.restoreState()
 
         doc = BaseDocTemplate(caminho, pagesize=A4,
                               title=f"Compactação do solo — {ctx['talhao']}",
-                              author='Penetro3D', subject=ctx['projeto'])
+                              author=AUTOR, subject=ctx['projeto'])
         quadro = Frame(2 * cm, 1.6 * cm, A4[0] - 4 * cm, A4[1] - 3.6 * cm, id='q',
                        leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
         doc.addPageTemplates([PageTemplate(id='p', frames=[quadro], onPage=moldura)])

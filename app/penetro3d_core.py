@@ -647,7 +647,7 @@ def montar_payload(ctx, pontos, prof, CI, R, S, medias, camadas, fatias, V=None)
     if ctx.get('data_coleta'):
         meta.insert(2, ('Amostragem', ctx['data_coleta']))
 
-    from penetro3d_versao import VERSAO
+    from penetro3d_versao import AUTOR, VERSAO
     return {
         'meta': {
             'eyebrow': f"{ctx['projeto']} · penetrometria",
@@ -663,8 +663,8 @@ def montar_payload(ctx, pontos, prof, CI, R, S, medias, camadas, fatias, V=None)
                               f'francamente restritiva, em solo com umidade próxima à '
                               f'capacidade de campo.'),
             'rodape': (f"Projeto {ctx['projeto']} · fonte: {ctx['arquivo_kml']} e "
-                       f"{ctx['arquivo_xlsx']}. Gerado pelo Penetro3D {VERSAO} em "
-                       f"{date.today().strftime('%d/%m/%Y')}."),
+                        f"{ctx['arquivo_xlsx']}. Gerado pelo Penetro3D {VERSAO} em "
+                        f"{date.today().strftime('%d/%m/%Y')} · Autoria: {AUTOR}"),
         },
         'limiares': {'mod': LIM_MOD, 'crit': LIM_CRIT, 'cmax': CMAX_KPA},
         'rampa': RAMPA,
