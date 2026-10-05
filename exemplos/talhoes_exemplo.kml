@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+<Document>
+  <name>Fazenda Exemplo (fictícia)</name>
+  <Placemark id="ID_00001">
+    <name>Talhão Norte</name>
+    <Polygon><outerBoundaryIs><LinearRing><coordinates>
+      -51.4169963,-25.3109163,0 -51.4139156,-25.3106541,0 -51.4118305,-25.3110212,0 -51.4114286,-25.3096677,0 -51.4127164,-25.3085804,0 -51.4154975,-25.3083920,0 -51.4171885,-25.3090194,0 -51.4169963,-25.3109163,0
+    </coordinates></LinearRing></outerBoundaryIs></Polygon>
+  </Placemark>
+  <Placemark id="ID_00002">
+    <name>Talhão Sul</name>
+    <Polygon>
+      <outerBoundaryIs><LinearRing><coordinates>
+        -51.4173092,-25.3152501,0 -51.4144292,-25.3156195,0 -51.4116453,-25.3149951,0 -51.4112390,-25.3123774,0 -51.4137203,-25.3116480,0 -51.4166020,-25.3118205,0 -51.4175014,-25.3133532,0 -51.4173092,-25.3152501,0
+      </coordinates></LinearRing></outerBoundaryIs>
+      <innerBoundaryIs><LinearRing><coordinates>
+        -51.4145234,-25.3140840,0 -51.4137283,-25.3139959,0 -51.4135277,-25.3134547,0 -51.4141226,-25.3130918,0 -51.4147196,-25.3133610,0 -51.4145234,-25.3140840,0
+      </coordinates></LinearRing></innerBoundaryIs>
+    </Polygon>
+  </Placemark>
+</Document>
+</kml>

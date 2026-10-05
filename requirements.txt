@@ -1,0 +1,10 @@
+# Para rodar a partir do código (Linux, macOS ou Windows com Python 3.11+).
+numpy>=1.26
+pandas>=2.1
+openpyxl>=3.1
+pyproj>=3.6
+shapely>=2.0
+matplotlib>=3.8
+reportlab>=4.0
+qrcode>=7.4
+pytest>=8

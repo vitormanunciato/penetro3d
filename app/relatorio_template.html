@@ -1,0 +1,436 @@
+<title>__TITULO_CURTO__</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+__PLOTLY__
+<style>
+:root{
+  --ground:#F4F6F2; --surface:#FFFFFF; --surface-2:#EDF1EA; --line:#DCE3D9;
+  --ink:#12211D; --ink-2:#3E4F49; --ink-3:#6C7B75;
+  --verde1:#155A54; --verde3:#00A76D; --verde5:#72BF44;
+  --amber:#F7A823; --red:#EE3124; --cinza:#727D84;
+  --accent:var(--verde1);
+  --shadow:0 1px 2px rgba(18,33,29,.06), 0 8px 24px rgba(18,33,29,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0D1512; --surface:#141F1B; --surface-2:#1B2723; --line:#2A3833;
+    --ink:#E9EFEB; --ink-2:#B3C1BA; --ink-3:#7F8F88;
+    --verde1:#4FBFA8; --verde3:#2FD08C; --accent:#4FBFA8;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0D1512; --surface:#141F1B; --surface-2:#1B2723; --line:#2A3833;
+  --ink:#E9EFEB; --ink-2:#B3C1BA; --ink-3:#7F8F88;
+  --verde1:#4FBFA8; --verde3:#2FD08C; --accent:#4FBFA8;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0; background:var(--ground); color:var(--ink);
+  font-family:"IBM Plex Sans", Verdana, system-ui, sans-serif; font-size:15px; line-height:1.55}
+.wrap{max-width:1180px; margin:0 auto; padding:32px 22px 72px}
+h1,h2,h3{font-family:"Archivo","IBM Plex Sans",Verdana,sans-serif; text-wrap:balance; margin:0}
+h1{font-size:clamp(26px,3.4vw,38px); font-weight:700; letter-spacing:-.02em; line-height:1.1}
+h2{font-size:19px; font-weight:600; letter-spacing:-.01em}
+.eyebrow{font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3); font-weight:600}
+.lede{color:var(--ink-2); max-width:66ch; margin-top:10px}
+header.hd{border-bottom:2px solid var(--accent); padding-bottom:20px; margin-bottom:26px}
+.meta{display:flex; flex-wrap:wrap; gap:8px 26px; margin-top:16px; font-family:"IBM Plex Mono",monospace; font-size:12.5px; color:var(--ink-2)}
+.meta b{color:var(--ink); font-weight:500}
+.kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px; margin-bottom:28px}
+.kpi{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:16px 18px; box-shadow:var(--shadow)}
+.kpi .lab{font-size:12px; color:var(--ink-3); line-height:1.35; min-height:2.7em}
+.kpi .val{font-family:"Archivo",sans-serif; font-size:32px; font-weight:700; letter-spacing:-.02em; font-variant-numeric:tabular-nums; margin-top:6px}
+.kpi .val small{font-size:15px; font-weight:500; color:var(--ink-2); margin-left:3px}
+.kpi.warn{border-left:4px solid var(--amber)}
+.kpi.crit{border-left:4px solid var(--red)}
+.kpi.ok{border-left:4px solid var(--verde5)}
+section{margin-top:40px}
+.sechead{display:flex; align-items:baseline; justify-content:space-between; gap:18px; flex-wrap:wrap; margin-bottom:6px}
+.note{color:var(--ink-3); font-size:13px; max-width:70ch; margin:4px 0 16px}
+.seg{display:flex; flex-wrap:wrap; gap:6px; background:var(--surface-2); border:1px solid var(--line); border-radius:9px; padding:4px}
+.seg button{font:inherit; font-size:13px; font-weight:500; border:0; background:transparent; color:var(--ink-2);
+  padding:7px 13px; border-radius:6px; cursor:pointer; white-space:nowrap}
+.seg button:hover{color:var(--ink); background:var(--surface)}
+.seg button[aria-pressed="true"]{background:var(--accent); color:#fff}
+.seg button:focus-visible{outline:2px solid var(--verde3); outline-offset:2px}
+.panel{background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow); overflow:hidden}
+.palco{position:relative}
+.escudo{position:absolute; inset:0; z-index:2; display:flex; align-items:flex-end;
+  justify-content:center; padding-bottom:18px; background:transparent; cursor:pointer}
+.escudo span{background:rgba(18,33,29,.78); color:#fff; font-size:13px; font-weight:600;
+  padding:9px 16px; border-radius:20px}
+.destravar{position:absolute; left:50%; transform:translateX(-50%); bottom:12px; z-index:3;
+  font:inherit; font-size:12.5px; font-weight:600; border:0; border-radius:20px;
+  padding:8px 15px; background:rgba(18,33,29,.78); color:#fff; cursor:pointer}
+#view3d{height:clamp(460px,62vh,680px)}
+.viewnote{border-top:1px solid var(--line); padding:11px 16px; font-size:12.5px; color:var(--ink-3); background:var(--surface-2)}
+.scale{display:flex; align-items:center; gap:0; margin:16px 0 4px; border-radius:6px; overflow:hidden; border:1px solid var(--line)}
+.scale div{flex:1; padding:9px 10px; font-size:12.5px; font-weight:600; text-align:center; letter-spacing:.01em}
+.scalecap{display:flex; justify-content:space-between; font-size:11.5px; color:var(--ink-3); font-family:"IBM Plex Mono",monospace; margin-top:5px}
+.grid4{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:14px}
+.card{background:var(--surface); border:1px solid var(--line); border-radius:11px; box-shadow:var(--shadow); padding:12px 12px 6px}
+.card h3{font-size:14px; font-weight:600; margin:0 0 2px; padding:0 4px}
+.card .sub{font-size:11.5px; color:var(--ink-3); padding:0 4px 6px; font-family:"IBM Plex Mono",monospace}
+.card .plot{height:250px}
+.selo{font-size:10.5px; font-weight:600; line-height:1.3; margin:0 4px 6px;
+      padding:4px 7px; border-radius:5px; display:inline-block}
+.selo.sim{color:#1E6B3A; background:rgba(114,191,68,.16)}
+.selo.nao{color:#A81E14; background:rgba(238,49,36,.12)}
+:root[data-theme="dark"] .selo.sim{color:#8FD96A}
+:root[data-theme="dark"] .selo.nao{color:#FF8A7A}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .selo.sim{color:#8FD96A}
+  :root:not([data-theme="light"]) .selo.nao{color:#FF8A7A}
+}
+.two{display:grid; grid-template-columns:1.15fr .85fr; gap:18px; align-items:start}
+@media(max-width:860px){.two{grid-template-columns:1fr}}
+.plotbox{height:430px}
+.rolagem{overflow-x:auto; -webkit-overflow-scrolling:touch}
+table{width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums}
+th,td{text-align:right; padding:8px 10px; border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left; font-family:"IBM Plex Mono",monospace}
+td{white-space:nowrap}
+th{font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); font-weight:600}
+.bar{display:inline-block; height:9px; border-radius:2px; vertical-align:middle}
+.method{background:var(--surface-2); border:1px solid var(--line); border-radius:11px; padding:20px 22px}
+.method ul{margin:0; padding-left:18px; color:var(--ink-2); font-size:14px}
+.method li{margin:7px 0}
+.method code{font-family:"IBM Plex Mono",monospace; font-size:12.5px; background:var(--surface); padding:1px 5px; border-radius:4px; border:1px solid var(--line)}
+.flag{color:var(--ink); font-weight:600}
+footer{margin-top:44px; padding-top:18px; border-top:1px solid var(--line); font-size:12px; color:var(--ink-3)}
+
+@media (max-width:560px){
+  .wrap{padding:20px 14px 56px}
+  .kpis{grid-template-columns:repeat(2,1fr); gap:10px}
+  .kpi{padding:12px 13px; border-radius:9px}
+  .kpi .lab{font-size:11px; min-height:3.6em}
+  .kpi .val{font-size:25px}
+  .kpi .val small{font-size:12px}
+  .meta{gap:6px 16px; font-size:11.5px}
+  section{margin-top:30px}
+  .scale div{font-size:11px; padding:8px 5px; line-height:1.25}
+  .scalecap{font-size:10px; gap:4px}
+  .scalecap span:nth-child(2), .scalecap span:nth-child(3){display:none}
+  .grid4{grid-template-columns:1fr}
+  .card .plot{height:230px}
+  .plotbox{height:340px}
+  #view3d{height:min(64vh,440px)}
+  .seg{width:100%}
+  .seg button{flex:1 1 44%; font-size:12.5px; padding:8px 6px}
+  table{font-size:12px}
+  th,td{padding:7px 6px}
+  .bar{display:none}
+  .method{padding:16px 15px}
+  .method ul{font-size:13px; padding-left:16px}
+}
+</style>
+
+<div class="wrap">
+<header class="hd">
+  <div class="eyebrow" id="hd-eyebrow"></div>
+  <h1 id="hd-titulo"></h1>
+  <p class="lede" id="hd-lede"></p>
+  <div class="meta" id="hd-meta"></div>
+</header>
+
+<div class="kpis" id="kpis"></div>
+
+<section>
+  <div class="sechead">
+    <div><span class="eyebrow">Visualização principal</span><h2>Bloco 3D do talhão</h2></div>
+    <div class="seg" id="seg3d" role="group" aria-label="Modo de visualização 3D"></div>
+  </div>
+  <p class="note">Arraste para girar, role para aproximar. O eixo vertical está exagerado — poucos centímetros de solo sob centenas de metros de talhão só se enxergam com exagero vertical.</p>
+  <div class="panel">
+    <div class="palco">
+      <div id="view3d"></div>
+      <div class="escudo" id="escudo" hidden><span>Toque para girar o bloco</span></div>
+      <button class="destravar" id="btravar" hidden>Travar para rolar a página</button>
+    </div>
+    <div class="viewnote" id="viewnote"></div>
+  </div>
+  <div class="scale" id="scale"></div>
+  <div class="scalecap" id="scalecap"></div>
+</section>
+
+<section>
+  <div class="sechead"><div><span class="eyebrow">Corte por camada</span><h2>Resistência média em profundidade</h2></div></div>
+  <p class="note">Média da resistência à penetração dentro de cada faixa de profundidade. Os pontos claros marcam os perfis amostrados; a linha marca o contorno do talhão. O selo de cada camada vem de uma validação cruzada: onde a interpolação não reduz o erro ante usar a média do talhão, o desenho das manchas não tem suporte no dado.</p>
+  <div class="grid4" id="layers"></div>
+</section>
+
+<section>
+  <div class="sechead"><div><span class="eyebrow">Perfis verticais</span><h2>Como a resistência varia com a profundidade</h2></div></div>
+  <div class="two">
+    <div class="panel" style="padding:14px 10px 6px"><div class="plotbox" id="profiles"></div></div>
+    <div class="panel" style="padding:18px 20px">
+      <h2 style="font-size:16px">Distribuição da área por classe</h2>
+      <p class="note" style="margin:6px 0 12px">Percentual da área do talhão em cada classe de resistência, por camada.</p>
+      <div class="rolagem"><table id="tbl"><thead><tr><th>Camada</th><th>Média</th><th id="th-baixo"></th><th id="th-mod"></th><th id="th-rest"></th></tr></thead><tbody></tbody></table></div>
+      <p class="note" id="nota-limiares" style="margin-top:14px"></p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sechead"><div><span class="eyebrow">Como isso foi construído</span><h2>Método, incertezas e o que verificar no campo</h2></div></div>
+  <div class="method"><ul id="notas"></ul></div>
+</section>
+
+<footer id="rodape"></footer>
+</div>
+
+<script id="payload" type="application/json">__DATA__</script>
+<script>
+const D = JSON.parse(document.getElementById('payload').textContent);
+const M = D.meta, S = D.stats, L = D.limiares;
+const CMAX = L.cmax;
+const RAMP = D.rampa;
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const nx = D.x.length, ny = D.y.length, nz = D.z.length;
+const br = n => n.toLocaleString('pt-BR');
+const vg = v => String(v).replace('.', ',');
+
+/* ---------- cabeçalho ---------- */
+document.getElementById('hd-eyebrow').textContent = M.eyebrow;
+document.getElementById('hd-titulo').textContent  = M.titulo;
+document.getElementById('hd-lede').textContent    = M.lede;
+document.getElementById('hd-meta').innerHTML = M.meta.map(([k,v]) => `<span>${k} <b>${v}</b></span>`).join('');
+document.getElementById('rodape').textContent = M.rodape;
+
+/* ---------- KPIs ---------- */
+const kpis = [
+  {lab:`Área com camada restritiva (>${br(L.crit)} kPa) em alguma profundidade`, val:S.restritiva_area, un:'%', cls:'crit'},
+  {lab:'Espessura somada acima do limite, onde ocorre', val:vg(S.restritiva_esp.toFixed(1)), un:'cm', cls:'warn'},
+  {lab:'Profundidade mediana da resistência máxima', val:S.zmax_mediana.toFixed(0), un:'cm', cls:'warn'},
+  ...D.camadas.slice(0,2).map(c => ({
+    lab:`Resistência média na camada ${c.rotulo}`, val:br(S[c.chave].media), un:'kPa',
+    cls: S[c.chave].media >= L.crit ? 'crit' : (S[c.chave].media >= L.mod ? 'warn' : 'ok')}))
+];
+document.getElementById('kpis').innerHTML = kpis.map(k =>
+  `<div class="kpi ${k.cls}"><div class="lab">${k.lab}</div><div class="val">${k.val}<small>${k.un}</small></div></div>`).join('');
+
+/* ---------- faixa de escala ---------- */
+document.getElementById('scale').innerHTML = [
+  ['#B7D98C','#12211D',`Baixa · &lt; ${br(L.mod)} kPa`],
+  ['#F7A823','#3A2606',`Moderada · ${br(L.mod)}–${br(L.crit)} kPa`],
+  ['#EE3124','#FFFFFF',`Restritiva · &gt; ${br(L.crit)} kPa`]
+].map(([bg,fg,t]) => `<div style="background:${bg};color:${fg}">${t}</div>`).join('');
+document.getElementById('scalecap').innerHTML =
+  `<span>0 kPa</span><span>${br(L.mod)} — restrição incipiente</span>` +
+  `<span>${br(L.crit)} — limite crítico</span><span>≥ ${br(CMAX)} kPa</span>`;
+
+/* ---------- tabela ---------- */
+document.getElementById('th-baixo').innerHTML = '&lt;' + br(L.mod);
+document.getElementById('th-mod').innerHTML   = br(L.mod) + '–' + br(L.crit);
+document.getElementById('th-rest').innerHTML  = '&gt;' + br(L.crit);
+document.getElementById('nota-limiares').textContent = M.nota_limiares;
+document.querySelector('#tbl tbody').innerHTML = D.camadas.map(c => {
+  const s = S[c.chave];
+  const b = (v,col)=>`<span class="bar" style="width:${Math.max(v*0.40, v?2:0)}px;background:${col}"></span> ${v}%`;
+  return `<tr><td>${c.rotulo}</td><td><b>${br(s.media)}</b></td>
+    <td>${b(s.baixo,'#72BF44')}</td><td>${b(s.mod,'#F7A823')}</td><td>${b(s.rest,'#EE3124')}</td></tr>`;
+}).join('');
+
+/* ---------- notas de método ---------- */
+document.getElementById('notas').innerHTML = D.notas.map(n => `<li>${n}</li>`).join('');
+
+/* ---------- traces 3D ---------- */
+const zi = D.z.map(d => -d);
+const stepZ = Math.max(1, Math.round(nz/12));
+const volX=[], volY=[], volZ=[], volV=[];
+for (let k=0;k<nz;k+=stepZ) for (let j=0;j<ny;j++) for (let i=0;i<nx;i++){
+  const v = D.vol[k][j][i];
+  // sentinela bem abaixo da escala: fora do talhão nunca entra no volume
+  volX.push(D.x[i]); volY.push(D.y[j]); volZ.push(zi[k]); volV.push(v===null? -9999 : v);
+}
+const estreito = window.innerWidth < 560;
+const NSURF = 20;   // número de isosuperfícies do modo volume
+const cbar = {title:{text:'RP (kPa)', side:'right'},
+  thickness: estreito ? 9 : 14, len: estreito ? .58 : .7, outlinewidth:0, ticks:'outside',
+  tickfont:{size: estreito ? 9 : 11}, x: estreito ? 1.02 : undefined};
+
+const tVolume = {type:'volume', x:volX, y:volY, z:volZ, value:volV,
+  // isomin abaixo de zero: a camada superficial (centenas de kPa) também é desenhada
+  isomin:-1, isomax:CMAX, cmin:0, cmax:CMAX, colorscale:RAMP, colorbar:cbar,
+  opacity:0.19,
+  // camadas de baixa RP com menos opacidade: aparecem sem encobrir o que há abaixo
+  opacityscale:[[0,0.62],[0.30,0.75],[0.70,1],[1,1]],
+  surface:{count:NSURF}, caps:{x:{show:false},y:{show:false},z:{show:false}},
+  hoverinfo:'skip', name:'Volume'};
+
+const tIso = {type:'isosurface', x:volX, y:volY, z:volZ, value:volV,
+  isomin:L.crit, isomax:Math.max(CMAX*2, D.maxvalor+100), cmin:0, cmax:CMAX, colorscale:RAMP,
+  showscale:true, colorbar:cbar, opacity:0.9, surface:{count:2},
+  caps:{x:{show:true},y:{show:true},z:{show:true}}, hoverinfo:'skip', name:'Camada restritiva'};
+
+const tSlices = D.fatias.map((dep,idx)=>{
+  const k = D.z.indexOf(dep);
+  return {type:'surface', x:D.x, y:D.y, z: D.y.map(()=> D.x.map(()=> -dep)),
+    surfacecolor: D.vol[k], cmin:0, cmax:CMAX, colorscale:RAMP,
+    showscale: idx===0, colorbar:cbar, opacity:0.94,
+    contours:{x:{highlight:false},y:{highlight:false},z:{highlight:false}},
+    hovertemplate:`%{surfacecolor:.0f} kPa · ${vg(dep)} cm<extra></extra>`, name:dep+' cm'};
+});
+
+const tProfiles = D.pontos.map(p => ({
+  type:'scatter3d', mode:'markers', x:p.ci.map(()=>p.x), y:p.ci.map(()=>p.y), z:zi,
+  marker:{size:5, color:p.ci, cmin:0, cmax:CMAX, colorscale:RAMP, showscale:false,
+          line:{width:0.5, color:p.dentro? 'rgba(255,255,255,.45)':'#727D84'}},
+  hovertemplate:`Perfil ${p.id} · %{customdata} cm<br>%{marker.color:.0f} kPa<extra></extra>`,
+  customdata:D.z, showlegend:false, name:'P'+p.id}));
+
+// D.poly traz o anel externo e, se houver, os buracos do talhão; null separa os anéis
+const contorno = D.poly.reduce((a, anel, i) => a.concat(i ? [[null,null]] : [], anel), []);
+const outline = {type:'scatter3d', mode:'lines',
+  x:contorno.map(p=>p[0]), y:contorno.map(p=>p[1]), z:contorno.map(()=>0),
+  line:{width:5, color:'#727D84'}, hoverinfo:'skip', showlegend:false, name:'Contorno'};
+
+const pins = {type:'scatter3d', mode:'markers',
+  x:D.pontos.map(p=>p.x), y:D.pontos.map(p=>p.y), z:D.pontos.map(()=>2),
+  marker:{size: estreito ? 3 : 4, symbol:'diamond', line:{width:1, color:'#FFFFFF'},
+          color:D.pontos.map(p=>p.dentro?'#12211D':'#727D84')},
+  text:D.pontos.map(p=>String(p.id)),
+  hovertemplate:'Perfil %{text}<extra></extra>', showlegend:false, name:'Perfis'};
+
+const VIEWS = {
+  volume:{traces:[tVolume, outline, pins],
+    note:`Nuvem volumétrica semitransparente: ${NSURF} isosuperfícies de 0 a ${br(CMAX)} kPa, com as camadas de baixa resistência em opacidade menor. As manchas quentes indicam onde o solo resiste mais à penetração. Bom para a leitura geral do bloco.`},
+  iso:{traces:[tIso, outline, pins],
+    note:`Casca sólida delimitando tudo o que ultrapassa ${br(L.crit)} kPa — o volume de solo em condição francamente restritiva. Onde a casca não aparece, o perfil inteiro está abaixo do limite crítico.`},
+  fatias:{traces:[...tSlices, outline, pins],
+    note:`Planos horizontais a ${D.fatias.map(vg).join(', ')} cm. Compara a mesma posição do talhão em profundidades diferentes; passe o cursor para ler o valor.`},
+  perfis:{traces:[...tProfiles, outline, pins],
+    note:`Somente os dados medidos — ${D.pontos.length} colunas de ${nz} leituras, sem interpolação. Use para conferir o mapa contra o dado bruto e ver a densidade real de amostragem.`}
+};
+const LABELS = {volume:'Volume interpolado', iso:`Camada restritiva >${br(L.crit)} kPa`,
+                fatias:'Fatias em profundidade', perfis:'Perfis medidos'};
+
+document.getElementById('seg3d').innerHTML = Object.keys(VIEWS).map((k,i)=>
+  `<button data-v="${k}" aria-pressed="${i===0}">${LABELS[k]}</button>`).join('');
+
+let current = 'volume';
+// em tela estreita o bloco precisa de câmera mais afastada, senão as bordas somem
+const afast = estreito ? 1.45 : 1;
+let camera = {eye:{x:1.18*afast, y:-1.28*afast, z:0.80*afast}, center:{x:0, y:0, z:-0.08}};
+const zmaxp = Math.max(...D.z);
+const ticks = []; for (let t=0; t<=zmaxp+0.001; t+=10) ticks.push(t);
+
+function baseLayout(){
+  const ink = css('--ink'), ink3 = css('--ink-3'), line = css('--line');
+  const ax = {color:ink, gridcolor:line, zerolinecolor:line,
+              titlefont:{size:11, color:ink3}, tickfont:{size:10, color:ink3},
+              backgroundcolor:'rgba(0,0,0,0)', showbackground:true};
+  return {
+    margin:{l:0,r:0,t:0,b:0}, paper_bgcolor:'rgba(0,0,0,0)',
+    font:{family:'IBM Plex Sans, Verdana, sans-serif', color:ink},
+    scene:{
+      xaxis:{...ax, title:{text:'Leste–Oeste (m)'}},
+      yaxis:{...ax, title:{text:'Norte–Sul (m)'}},
+      zaxis:{...ax, title:{text:'Profundidade (cm)'},
+             tickvals:ticks.map(t=>-t), ticktext:ticks.map(String),
+             range:[-zmaxp-2, 4]},
+      aspectmode:'manual',
+      aspectratio:{x:1.15, y:1.15*(D.y[ny-1]-D.y[0])/(D.x[nx-1]-D.x[0]), z:0.52},
+      camera, bgcolor:'rgba(0,0,0,0)'}
+  };
+}
+function draw(v){
+  current = v;
+  Plotly.react('view3d', VIEWS[v].traces, baseLayout(),
+    {responsive:true, displaylogo:false,
+     // a barra de ferramentas não serve para dedo e ainda rouba espaço
+     displayModeBar: matchMedia('(pointer: coarse)').matches ? false : 'hover'});
+  document.getElementById('viewnote').textContent = VIEWS[v].note;
+  document.querySelectorAll('#seg3d button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.v===v));
+}
+document.getElementById('seg3d').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(b) draw(b.dataset.v);
+});
+draw('volume');
+document.getElementById('view3d').on('plotly_relayout', ev=>{ if(ev['scene.camera']) camera = ev['scene.camera']; });
+
+/* No celular, um dedo sobre o gráfico 3D gira o modelo e a página não rola. O escudo
+   devolve a rolagem por padrão e libera a manipulação só depois de um toque. */
+if (matchMedia('(hover: none) and (pointer: coarse)').matches) {
+  const escudo = document.getElementById('escudo');
+  const travar = document.getElementById('btravar');
+  escudo.hidden = false;
+  escudo.addEventListener('click', () => { escudo.hidden = true; travar.hidden = false; });
+  travar.addEventListener('click', () => { escudo.hidden = false; travar.hidden = true; });
+}
+
+/* ---------- mapas 2D por camada ---------- */
+const selo = c => {
+  const v = (D.validacao || {})[c.chave];
+  if (!v) return '';
+  // onde interpolar não vence a média do talhão, o mapa não deve ser lido como mapa
+  return `<div class="selo ${v.suporte?'sim':'nao'}" title="${v.detalhe}">`
+       + `${v.suporte?'✓':'✕'} ${v.rotulo}</div>`;
+};
+document.getElementById('layers').innerHTML = D.camadas.map((c,i)=>
+  `<div class="card"><h3>${c.rotulo}</h3>
+   <div class="sub">média ${br(S[c.chave].media)} kPa · ${S[c.chave].rest}% restritivo</div>
+   ${selo(c)}
+   <div class="plot" id="lay${i}"></div></div>`).join('');
+
+function drawLayers(){
+  const ink3 = css('--ink-3');
+  D.camadas.forEach((c,i)=>{
+    const heat = {type:'heatmap', x:D.x, y:D.y, z:D.layers[c.chave], zmin:0, zmax:CMAX,
+      colorscale:RAMP, showscale:false, hoverongaps:false, hovertemplate:'%{z:.0f} kPa<extra></extra>'};
+    const out = {type:'scatter', mode:'lines', x:contorno.map(p=>p[0]), y:contorno.map(p=>p[1]),
+      line:{width:1.4, color:ink3}, hoverinfo:'skip'};
+    const pt = {type:'scatter', mode:'markers', x:D.pontos.map(p=>p.x), y:D.pontos.map(p=>p.y),
+      marker:{size:5, color:D.pontos.map(p=>p.dentro?'#FFFFFF':'#727D84'), line:{width:1, color:'#12211D'}},
+      text:D.pontos.map(p=>'Perfil '+p.id), hovertemplate:'%{text}<extra></extra>'};
+    Plotly.react('lay'+i, [heat,out,pt], {
+      margin:{l:6,r:6,t:4,b:6}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+      showlegend:false, hovermode:'closest',
+      xaxis:{visible:false, constrain:'domain'},
+      yaxis:{visible:false, scaleanchor:'x', scaleratio:1, constrain:'domain'}
+    }, {responsive:true, displayModeBar:false});
+  });
+}
+drawLayers();
+
+/* ---------- perfis 2D ---------- */
+function drawProfiles(){
+  const ink = css('--ink'), ink3 = css('--ink-3'), line = css('--line');
+  const media = D.z.map((_,k)=> D.pontos.reduce((s,p)=>s+p.ci[k],0)/D.pontos.length);
+  const xmax = Math.round(CMAX*1.09);
+  const traces = D.pontos.map(p=>({type:'scatter', mode:'lines', x:p.ci, y:D.z,
+    line:{width:1.1, color:'rgba(114,125,132,.42)'},
+    hovertemplate:`Perfil ${p.id}<br>%{x:.0f} kPa · %{y} cm<extra></extra>`, showlegend:false}));
+  traces.push({type:'scatter', mode:'lines', x:media, y:D.z,
+    name:`Média dos ${D.pontos.length} perfis`, line:{width:3, color:css('--verde1')},
+    hovertemplate:'Média %{x:.0f} kPa · %{y} cm<extra></extra>'});
+  Plotly.react('profiles', traces, {
+    margin:{l:52,r:14,t:10,b:44}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+    font:{family:'IBM Plex Sans, Verdana, sans-serif', color:ink, size:12},
+    xaxis:{title:{text:'Resistência à penetração (kPa)', font:{size:11.5, color:ink3}},
+           gridcolor:line, zeroline:false, range:[0,xmax], tickfont:{color:ink3, size:10.5}},
+    yaxis:{title:{text:'Profundidade (cm)', font:{size:11.5, color:ink3}},
+           autorange:'reversed', gridcolor:line, zeroline:false, tickfont:{color:ink3, size:10.5}},
+    legend:{orientation:'h', y:1.08, x:0, font:{size:11.5}}, hovermode:'closest',
+    shapes:[
+      {type:'rect', xref:'x', yref:'paper', x0:L.mod, x1:L.crit, y0:0, y1:1,
+       fillcolor:'rgba(247,168,35,.10)', line:{width:0}, layer:'below'},
+      {type:'rect', xref:'x', yref:'paper', x0:L.crit, x1:xmax, y0:0, y1:1,
+       fillcolor:'rgba(238,49,36,.10)', line:{width:0}, layer:'below'}],
+    annotations:[
+      {x:(L.mod+L.crit)/2, y:1, xref:'x', yref:'paper', yanchor:'bottom', text:'moderada',
+       showarrow:false, font:{size:10.5, color:'#C4820F'}},
+      {x:(L.crit+xmax)/2, y:1, xref:'x', yref:'paper', yanchor:'bottom', text:'restritiva',
+       showarrow:false, font:{size:10.5, color:'#D6291D'}}]
+  }, {responsive:true, displayModeBar:false});
+}
+drawProfiles();
+
+/* ---------- tema ---------- */
+const mq = window.matchMedia('(prefers-color-scheme: dark)');
+const redraw = () => { draw(current); drawLayers(); drawProfiles(); };
+mq.addEventListener ? mq.addEventListener('change', redraw) : mq.addListener(redraw);
+new MutationObserver(redraw).observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
+</script>

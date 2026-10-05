@@ -1,0 +1,13 @@
+{
+  "name": "Penetro3D — Radar de campo",
+  "short_name": "Radar",
+  "start_url": "radar_campo.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F4F6F2",
+  "theme_color": "#155A54",
+  "description": "Navegação por GPS até os pontos de amostragem planejados no Penetro3D.",
+  "icons": [
+    {"src": "icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}
+  ]
+}

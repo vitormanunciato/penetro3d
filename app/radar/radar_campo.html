@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#155A54">
+<title>Radar de campo — Penetro3D</title>
+<link rel="manifest" href="manifest.json">
+<style>
+/* Tela de campo: sol forte, luvas, pressa. Fundo claro e tipo grande vencem o
+   modo escuro aqui — brilho de tela sob sol direto lê melhor com fundo claro. */
+:root{
+  --verde1:#155A54; --verde3:#00A76D; --verde5:#4E9A28;
+  --ambar:#B87A00; --vermelho:#C62828; --cinza:#6C7B75;
+  --tinta:#0E1A17; --tinta2:#3E4F49; --tinta3:#6C7B75;
+  --fundo:#F4F6F2; --cartao:#FFFFFF; --linha:#D6DED2;
+  --alvo:var(--cinza);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+html,body{margin:0; height:100%}
+body{background:var(--fundo); color:var(--tinta);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-size:17px; line-height:1.45; overscroll-behavior:none; user-select:none}
+#app{max-width:560px; margin:0 auto; min-height:100%; display:flex; flex-direction:column}
+header{background:var(--verde1); color:#fff; padding:10px 16px;
+  padding-top:calc(10px + env(safe-area-inset-top));
+  display:flex; align-items:center; gap:12px; position:sticky; top:0; z-index:5}
+header h1{font-size:15px; font-weight:600; margin:0; flex:1; letter-spacing:.01em}
+header .prog{font-variant-numeric:tabular-nums; font-size:14px; opacity:.9}
+main{flex:1; padding:16px; display:flex; flex-direction:column}
+.oculto{display:none !important}
+.intro{background:var(--cartao); border:1px solid var(--linha); border-radius:14px;
+  padding:22px 20px; margin-top:8px}
+.intro h2{margin:0 0 8px; font-size:20px}
+.intro p{color:var(--tinta2); font-size:15px; margin:0 0 14px}
+.intro ol{color:var(--tinta2); font-size:14.5px; padding-left:20px; margin:0 0 16px}
+.intro li{margin:6px 0}
+button, label.bt{font:inherit; font-weight:600; border:0; border-radius:12px; cursor:pointer;
+  padding:15px 18px; min-height:54px; display:inline-flex; align-items:center;
+  justify-content:center; gap:8px; width:100%}
+.primario{background:var(--verde1); color:#fff}
+.primario:active{background:#0E413D}
+.secundario{background:var(--cartao); color:var(--tinta); border:1.5px solid var(--linha)}
+.perigo{background:#fff; color:var(--vermelho); border:1.5px solid var(--vermelho)}
+button[disabled]{opacity:.45}
+.linha-bt{display:flex; gap:10px; margin-top:10px}
+.linha-bt>*{flex:1}
+.radar{flex:1; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; text-align:center; gap:4px}
+.ponto-id{font-size:15px; color:var(--tinta2); font-weight:600; letter-spacing:.05em}
+.seta-caixa{width:min(62vw,250px); height:min(62vw,250px); position:relative; margin:6px 0}
+.seta-caixa svg{width:100%; height:100%; display:block}
+.dist{font-size:clamp(52px,17vw,78px); font-weight:800; line-height:1;
+  font-variant-numeric:tabular-nums; letter-spacing:-.03em; color:var(--alvo)}
+.dist small{font-size:.32em; font-weight:600; margin-left:4px; letter-spacing:0}
+.precisao{font-size:14px; color:var(--tinta3); font-variant-numeric:tabular-nums; margin-top:2px}
+.precisao b{color:var(--tinta2)}
+.aviso{font-size:14px; color:var(--vermelho); font-weight:600; margin-top:6px; max-width:34ch}
+.chegou{color:var(--verde5); font-weight:700; font-size:19px; margin-top:4px}
+.rodape-bt{margin-top:auto; padding-top:16px}
+table{width:100%; border-collapse:collapse; font-size:15px}
+th,td{text-align:left; padding:10px 8px; border-bottom:1px solid var(--linha)}
+th{font-size:11px; text-transform:uppercase; letter-spacing:.09em; color:var(--tinta3)}
+td.num{text-align:right; font-variant-numeric:tabular-nums}
+tr.feito td{color:var(--tinta3)}
+tr.atual{background:rgba(0,167,109,.10)}
+.tag{font-size:12px; font-weight:700; padding:2px 7px; border-radius:20px}
+.tag.ok{background:rgba(78,154,40,.16); color:#2F6A18}
+.tag.pulado{background:rgba(198,40,40,.12); color:var(--vermelho)}
+.tag.aberto{background:#EEF1EA; color:var(--tinta3)}
+.aba{display:flex; gap:6px; background:#E8EDE5; border-radius:12px; padding:4px; margin-bottom:14px}
+.aba button{flex:1; padding:11px 8px; min-height:0; border-radius:9px;
+  background:transparent; color:var(--tinta2); font-size:15px}
+.aba button[aria-pressed="true"]{background:var(--cartao); color:var(--verde1)}
+.resumo{background:var(--cartao); border:1px solid var(--linha); border-radius:12px;
+  padding:14px 16px; margin-bottom:14px; font-size:14.5px; color:var(--tinta2)}
+.resumo b{color:var(--tinta)}
+dialog{border:0; border-radius:16px; padding:20px; max-width:360px; width:88%;
+  box-shadow:0 12px 40px rgba(0,0,0,.28)}
+dialog::backdrop{background:rgba(14,26,23,.45)}
+dialog h3{margin:0 0 10px; font-size:18px}
+.motivos{display:grid; gap:8px; margin:14px 0}
+.rodape-nota{font-size:12.5px; color:var(--tinta3); text-align:center; padding:14px 8px}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1 id="titulo">Radar de campo</h1>
+    <span class="prog" id="prog"></span>
+  </header>
+  <main>
+    <section id="tela-plano">
+      <div class="intro">
+        <h2>Carregue o plano de amostragem</h2>
+        <p>O arquivo <b>.geojson</b> gerado pelo Penetro3D na aba “Planejar coleta”.</p>
+        <ol>
+          <li>Copie o .geojson para o celular (WhatsApp, e-mail ou cabo).</li>
+          <li>Toque em “Escolher arquivo” e selecione-o.</li>
+          <li>O plano fica salvo neste aparelho — não precisa de internet em campo.</li>
+        </ol>
+        <label class="bt primario">Escolher arquivo
+          <input type="file" id="arquivo" accept=".geojson,.json,application/geo+json" hidden>
+        </label>
+        <div class="linha-bt">
+          <button class="secundario" id="bt-demo">Usar plano de demonstração</button>
+        </div>
+        <p style="margin-top:16px; font-size:13.5px" id="estado-gps"></p>
+      </div>
+      <p class="rodape-nota">Penetro3D · radar de campo</p>
+    </section>
+
+    <section id="tela-nav" class="oculto" style="flex:1; display:flex; flex-direction:column">
+      <div class="aba" role="group">
+        <button data-tela="radar" aria-pressed="true">Radar</button>
+        <button data-tela="lista" aria-pressed="false">Lista</button>
+      </div>
+      <div id="vista-radar" class="radar">
+        <div class="ponto-id" id="ponto-id">—</div>
+        <div class="seta-caixa">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <circle cx="50" cy="50" r="47" fill="#fff" stroke="#D6DED2" stroke-width="1.5"/>
+            <circle cx="50" cy="50" r="33" fill="none" stroke="#EDF1EA" stroke-width="1"/>
+            <text x="50" y="12" text-anchor="middle" font-size="7" fill="#6C7B75"
+                  font-weight="700" id="rosa-n">N</text>
+            <g id="seta"><path d="M50 16 L64 62 L50 53 L36 62 Z" id="seta-corpo" fill="#6C7B75"/></g>
+            <circle cx="50" cy="50" r="3.4" fill="#0E1A17"/>
+          </svg>
+        </div>
+        <div class="dist" id="dist">—<small>m</small></div>
+        <div class="precisao" id="precisao">aguardando GPS…</div>
+        <div class="chegou oculto" id="chegou">Chegou ao ponto</div>
+        <div class="aviso oculto" id="aviso"></div>
+        <div class="rodape-bt" style="width:100%">
+          <button class="primario" id="bt-coletei">Coletei aqui</button>
+          <div class="linha-bt">
+            <button class="secundario" id="bt-pular">Pular ponto</button>
+            <button class="secundario" id="bt-proximo">Próximo →</button>
+          </div>
+        </div>
+      </div>
+      <div id="vista-lista" class="oculto">
+        <div class="resumo" id="resumo"></div>
+        <div style="overflow:auto">
+          <table>
+            <thead><tr><th>Ponto</th><th>Situação</th><th class="num">Distância</th></tr></thead>
+            <tbody id="corpo-lista"></tbody>
+          </table>
+        </div>
+        <div class="linha-bt" style="margin-top:16px">
+          <button class="secundario" id="bt-exportar">Exportar coleta</button>
+        </div>
+        <div class="linha-bt">
+          <button class="perigo" id="bt-trocar">Trocar de plano</button>
+        </div>
+        <p class="rodape-nota">O progresso fica salvo neste navegador. Exporte ao terminar.</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<dialog id="dlg-pular">
+  <h3>Por que pular este ponto?</h3>
+  <p style="margin:0; color:#3E4F49; font-size:14.5px">
+    O motivo entra no relatório — um talhão com muitos pontos pulados por pedra tem
+    uma história que o mapa sozinho não conta.</p>
+  <div class="motivos" id="motivos"></div>
+  <button class="secundario" id="bt-cancelar-pular">Cancelar</button>
+</dialog>
+
+<script>
+'use strict';
+const CHAVE = 'penetro3d.radar.v1';
+const MOTIVOS = ['Pedra / impedimento', 'Terraço ou curva', 'Cabeceira / manobra',
+                 'Solo alagado', 'Sem acesso', 'Outro'];
+const $ = s => document.querySelector(s);
+const S = {plano:null, pontos:[], atual:0, pos:null, vista:'radar', vigia:null};
+
+/* Haversine e azimute inicial. Em distâncias de talhão (<2 km) a esfera basta: o
+   erro contra o elipsoide fica em centímetros, muito abaixo da precisão do GPS. */
+const R_TERRA = 6371008.8;
+const rad = g => g * Math.PI / 180;
+const gra = r => r * 180 / Math.PI;
+function distancia(a, b){
+  const dφ = rad(b.lat - a.lat), dλ = rad(b.lon - a.lon);
+  const h = Math.sin(dφ/2)**2 + Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dλ/2)**2;
+  return 2 * R_TERRA * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+function azimute(a, b){
+  const φ1 = rad(a.lat), φ2 = rad(b.lat), dλ = rad(b.lon - a.lon);
+  const y = Math.sin(dλ) * Math.cos(φ2);
+  const x = Math.cos(φ1)*Math.sin(φ2) - Math.sin(φ1)*Math.cos(φ2)*Math.cos(dλ);
+  return (gra(Math.atan2(y, x)) + 360) % 360;
+}
+
+/* localStorage basta: um plano por aparelho, volume pequeno. Tudo em try/catch,
+   porque em aba anônima o acessor pode simplesmente lançar. */
+function salvar(){
+  try{ localStorage.setItem(CHAVE, JSON.stringify({plano:S.plano, pontos:S.pontos, atual:S.atual})); }catch(e){}
+}
+function carregar(){
+  try{
+    const b = JSON.parse(localStorage.getItem(CHAVE) || 'null');
+    if(b && b.pontos && b.pontos.length){ S.plano=b.plano; S.pontos=b.pontos; S.atual=b.atual||0; return true; }
+  }catch(e){}
+  return false;
+}
+
+function lerGeoJSON(txt){
+  const g = JSON.parse(txt);
+  if(!g || g.type !== 'FeatureCollection') throw new Error('Não é um GeoJSON de plano.');
+  const pts = g.features.filter(f => f.geometry && f.geometry.type === 'Point')
+    .map(f => ({id:f.properties.id || '?', ordem:f.properties.ordem || 0,
+      lat:f.geometry.coordinates[1], lon:f.geometry.coordinates[0],
+      estado:'aberto', motivo:null, lat_real:null, lon_real:null, precisao:null, quando:null}))
+    .sort((a,b) => a.ordem - b.ordem);
+  if(!pts.length) throw new Error('O arquivo não tem pontos de amostragem.');
+  return {plano: g.properties || {}, pontos: pts};
+}
+function aplicar(d){
+  S.plano = d.plano; S.pontos = d.pontos;
+  S.atual = Math.max(0, S.pontos.findIndex(p => p.estado === 'aberto'));
+  salvar(); mostrarNav(); desenhar();
+}
+
+function iniciarGPS(){
+  if(!('geolocation' in navigator)){ $('#estado-gps').textContent = 'Este navegador não expõe GPS.'; return; }
+  if(S.vigia !== null) return;
+  S.vigia = navigator.geolocation.watchPosition(
+    p => { S.pos = {lat:p.coords.latitude, lon:p.coords.longitude, precisao:p.coords.accuracy,
+             rumo:(p.coords.speed != null && p.coords.speed > 0.5) ? p.coords.heading : null};
+           desenhar(); },
+    e => { const m = {1:'Permissão de localização negada.', 2:'Sem sinal de GPS no momento.',
+                      3:'GPS demorou a responder.'}[e.code] || e.message;
+           $('#estado-gps').textContent = m; mostrarAviso(m); },
+    {enableHighAccuracy:true, maximumAge:1500, timeout:20000});
+}
+
+function pontoAtual(){ return S.pontos[S.atual] || null; }
+function raioChegada(){
+  // Perseguir metros dentro da própria margem de erro do GPS queima tempo de campo
+  // e não muda nada na estatística de uma malha de dezenas de metros.
+  const prec = S.pos ? S.pos.precisao : 10;
+  return Math.max(8, Math.min(prec, 25));
+}
+function mostrarAviso(txt){ const el=$('#aviso'); el.textContent=txt||''; el.classList.toggle('oculto', !txt); }
+
+function desenhar(){
+  const p = pontoAtual();
+  $('#prog').textContent = S.pontos.length ? `${S.pontos.filter(x=>x.estado!=='aberto').length}/${S.pontos.length}` : '';
+  if(S.plano && S.plano.talhao) $('#titulo').textContent = S.plano.talhao;
+  if(!p){ desenharLista(); return; }
+  $('#ponto-id').textContent = `${p.id} · ponto ${S.atual+1} de ${S.pontos.length}`;
+  if(!S.pos){
+    $('#dist').innerHTML = '—<small>m</small>';
+    $('#precisao').textContent = 'aguardando GPS…';
+    document.documentElement.style.setProperty('--alvo', 'var(--cinza)');
+    desenharLista(); return;
+  }
+  const d = distancia(S.pos, p), az = azimute(S.pos, p), raio = raioChegada();
+  document.documentElement.style.setProperty('--alvo',
+    d <= raio ? 'var(--verde5)' : (d < 50 ? 'var(--ambar)' : 'var(--cinza)'));
+  $('#seta-corpo').setAttribute('fill', d <= raio ? '#4E9A28' : (d < 50 ? '#B87A00' : '#6C7B75'));
+  $('#dist').innerHTML = (d < 10 ? d.toFixed(1) : Math.round(d)) + '<small>m</small>';
+  $('#precisao').innerHTML = `precisão do GPS <b>±${Math.round(S.pos.precisao)} m</b>`
+    + (S.pos.rumo != null ? ' · mapa girando com o seu rumo' : ' · norte para cima');
+  // Caminhando, a seta gira com o rumo do GPS; parado, norte para cima e azimute
+  // absoluto. Bússola magnética não entra: perto de trator, aço e alternador a destroem.
+  const giro = S.pos.rumo != null ? az - S.pos.rumo : az;
+  $('#seta').setAttribute('transform', `rotate(${giro} 50 50)`);
+  $('#rosa-n').setAttribute('transform', S.pos.rumo != null ? `rotate(${-S.pos.rumo} 50 50)` : '');
+  $('#chegou').classList.toggle('oculto', d > raio);
+  mostrarAviso(S.pos.precisao > 25
+    ? `Precisão de ±${Math.round(S.pos.precisao)} m: sinal fraco. Espere estabilizar antes de registrar.` : '');
+  desenharLista();
+}
+
+function desenharLista(){
+  const feitos = S.pontos.filter(p=>p.estado==='coletado').length;
+  const pulados = S.pontos.filter(p=>p.estado==='pulado').length;
+  $('#resumo').innerHTML = `<b>${feitos}</b> coletados · <b>${pulados}</b> pulados · `
+    + `<b>${S.pontos.length - feitos - pulados}</b> restantes`
+    + (S.plano && S.plano.area_ha ? `<br>${S.plano.talhao || ''} — ${S.plano.area_ha} ha, plano ${S.plano.nivel || ''}` : '');
+  $('#corpo-lista').innerHTML = S.pontos.map((p,i)=>{
+    const d = S.pos ? distancia(S.pos, p) : null;
+    const tag = p.estado==='coletado' ? '<span class="tag ok">coletado</span>'
+              : p.estado==='pulado' ? `<span class="tag pulado">${p.motivo||'pulado'}</span>`
+              : '<span class="tag aberto">aberto</span>';
+    return `<tr class="${p.estado!=='aberto'?'feito':''} ${i===S.atual?'atual':''}" data-i="${i}">
+      <td><b>${p.id}</b></td><td>${tag}</td>
+      <td class="num">${d==null?'—':(d<1000?Math.round(d)+' m':(d/1000).toFixed(1)+' km')}</td></tr>`;
+  }).join('');
+  $('#corpo-lista').querySelectorAll('tr').forEach(tr=>{
+    tr.onclick = () => { S.atual = +tr.dataset.i; trocarVista('radar'); desenhar(); };
+  });
+}
+
+function registrar(estado, motivo){
+  const p = pontoAtual(); if(!p) return;
+  p.estado = estado; p.motivo = motivo || null;
+  // Grava ONDE A PESSOA ESTÁ, não onde o plano mandava: o desvio é dado.
+  if(S.pos){ p.lat_real=+S.pos.lat.toFixed(7); p.lon_real=+S.pos.lon.toFixed(7); p.precisao=Math.round(S.pos.precisao); }
+  p.quando = new Date().toISOString();
+  salvar(); proximoAberto();
+}
+function proximoAberto(){
+  const i = S.pontos.findIndex((p,j) => j > S.atual && p.estado === 'aberto');
+  S.atual = i >= 0 ? i : Math.max(0, S.pontos.findIndex(p => p.estado === 'aberto'));
+  if(S.pontos.every(p => p.estado !== 'aberto')) trocarVista('lista');
+  salvar(); desenhar();
+}
+function exportar(){
+  const feats = S.pontos.map(p => ({type:'Feature',
+    geometry:{type:'Point', coordinates:[p.lon_real ?? p.lon, p.lat_real ?? p.lat]},
+    properties:{id:p.id, ordem:p.ordem, estado:p.estado, motivo:p.motivo,
+      lat_planejado:p.lat, lon_planejado:p.lon, precisao_m:p.precisao, quando:p.quando,
+      desvio_m:(p.lat_real!=null) ? +distancia({lat:p.lat,lon:p.lon},{lat:p.lat_real,lon:p.lon_real}).toFixed(1) : null}}));
+  const doc = {type:'FeatureCollection', properties:{...(S.plano||{}), exportado_em:new Date().toISOString(),
+    coletados:S.pontos.filter(p=>p.estado==='coletado').length,
+    pulados:S.pontos.filter(p=>p.estado==='pulado').length}, features:feats};
+  const nome = `coleta_${(S.plano&&S.plano.talhao||'talhao').replace(/[^\w-]+/g,'_')}_${new Date().toISOString().slice(0,10)}.geojson`;
+  const url = URL.createObjectURL(new Blob([JSON.stringify(doc, null, 1)], {type:'application/geo+json'}));
+  const a = document.createElement('a'); a.href = url; a.download = nome; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+function trocarVista(v){
+  S.vista = v;
+  $('#vista-radar').classList.toggle('oculto', v!=='radar');
+  $('#vista-lista').classList.toggle('oculto', v!=='lista');
+  document.querySelectorAll('.aba button').forEach(b => b.setAttribute('aria-pressed', b.dataset.tela===v));
+}
+function mostrarNav(){ $('#tela-plano').classList.add('oculto'); $('#tela-nav').classList.remove('oculto'); iniciarGPS(); }
+
+function planoDemo(){
+  const lat0 = -25.3120, lon0 = -51.4170, d = 0.00064, pts = [];
+  let k = 1;
+  for(let i=0;i<3;i++) for(let j=0;j<3;j++)
+    pts.push({id:`P${String(k).padStart(3,'0')}`, ordem:k++, lat:lat0 + i*d, lon:lon0 + (j + (i%2?0.5:0))*d,
+              estado:'aberto', motivo:null, lat_real:null, lon_real:null, precisao:null, quando:null});
+  return {plano:{talhao:'Demonstração', nivel:'intermediario', area_ha:2.3, n:pts.length}, pontos:pts};
+}
+
+$('#arquivo').addEventListener('change', ev => {
+  const f = ev.target.files[0]; if(!f) return;
+  const fr = new FileReader();
+  fr.onload = () => { try{ aplicar(lerGeoJSON(fr.result)); }
+                      catch(e){ $('#estado-gps').textContent = 'Não consegui ler: ' + e.message; } };
+  fr.readAsText(f);
+});
+$('#bt-demo').onclick = () => aplicar(planoDemo());
+$('#bt-coletei').onclick = () => registrar('coletado');
+$('#bt-proximo').onclick = () => { S.atual = (S.atual+1) % S.pontos.length; desenhar(); };
+$('#bt-exportar').onclick = exportar;
+$('#bt-trocar').onclick = () => {
+  if(!confirm('Descartar o plano e o progresso salvos neste aparelho?')) return;
+  try{ localStorage.removeItem(CHAVE); }catch(e){}
+  location.reload();
+};
+document.querySelectorAll('.aba button').forEach(b => b.onclick = () => { trocarVista(b.dataset.tela); desenhar(); });
+const dlg = $('#dlg-pular');
+$('#motivos').innerHTML = MOTIVOS.map(m => `<button class="secundario" data-m="${m}">${m}</button>`).join('');
+$('#motivos').querySelectorAll('button').forEach(b => b.onclick = () => { dlg.close(); registrar('pulado', b.dataset.m); });
+$('#bt-pular').onclick = () => dlg.showModal();
+$('#bt-cancelar-pular').onclick = () => dlg.close();
+
+if(carregar()){ mostrarNav(); desenhar(); }
+// Service worker só quando servido por http(s); aberto direto do arquivo falharia.
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>

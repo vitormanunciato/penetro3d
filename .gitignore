@@ -1,0 +1,8 @@
+app/vendor/
+__pycache__/
+*.pyc
+saidas/
+venv*/
+build/
+dist/
+.pytest_cache/

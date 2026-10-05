@@ -1,0 +1,19 @@
+PENETRO3D — mapas 3D de compactação do solo
+
+Como usar
+
+1. Abra o Penetro3D pelo menu Iniciar ou pelo atalho na área de trabalho.
+2. Aba "Planejar coleta": escolha o KML do talhão e veja quantos pontos coletar
+   em cada nível (mínimo, intermediário, alto). Exporte o plano para o celular.
+3. Aba "Gerar relatórios": dê um nome ao projeto, escolha os KML dos talhões e a
+   planilha do Falker, confira o painel de conferência e clique em Gerar.
+4. Cada talhão ganha uma pasta com o relatório 3D (HTML), o PDF e as tabelas (CSV).
+   O HTML abre em qualquer navegador, sem internet, e pode ser enviado por e-mail.
+
+Para experimentar: a pasta "exemplos" (dentro da pasta do programa) tem um KML e
+uma planilha fictícios.
+
+Atualizações: o programa avisa sozinho quando há versão nova. Basta clicar em
+"Atualizar agora"; os relatórios já gerados não são tocados.
+
+Problemas: o registro do último erro fica em %LOCALAPPDATA%\Penetro3D\erro.txt
