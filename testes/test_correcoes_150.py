@@ -262,3 +262,32 @@ def test_gpx_valido_com_e_comercial():
     p = planejar(t, 'minimo')
     p['talhao'] = 'Faz. Silva & Filhos <T1>'
     ET.fromstring(_gpx(p))                        # antes: XML inválido
+
+
+# ───────────────────────────────────────────────── renomear talhões (1.6.0) ──
+def test_chave_estavel_e_apelido():
+    t = C.carregar_talhoes([KML])
+    assert len({x['chave'] for x in t}) == 2
+    assert C.carregar_talhoes([KML])[1]['chave'] == t[1]['chave']      # estável
+    t2 = C.carregar_talhoes([KML], {t[1]['chave']: 'Gleba do Açude'})
+    assert t2[1]['nome'] == 'Gleba do Açude' and t2[1]['nome_kml'] == 'Talhão Sul'
+    assert t2[1]['pasta'] == 'Gleba_do_Acude'
+    assert t2[0]['nome'] == 'Talhão Norte'
+
+
+def test_apelido_vale_no_projeto(tmp_path):
+    chave = C.carregar_talhoes([KML])[1]['chave']
+    r = C.processar_projeto('P', [KML], XLSX, str(tmp_path), log=lambda *_: None,
+                            apelidos={chave: 'Gleba do Açude'})
+    assert 'Gleba do Açude' in r['talhoes']
+    html = open(os.path.join(r['destino'], 'Gleba_do_Acude', 'Gleba_do_Acude.html'),
+                encoding='utf-8').read()
+    assert 'Gleba do Açude' in html.split('</title>')[0]
+    res = {l['talhao']: l for l in r['resumo']}
+    assert res['Gleba do Açude']['nome_no_kml'] == 'Talhão Sul'
+
+
+def test_apelido_vale_na_conferencia():
+    chave = C.carregar_talhoes([KML])[0]['chave']
+    c = C.conferencia([KML], XLSX, apelidos={chave: 'Lote 1'})
+    assert [t['nome'] for t in c['talhoes']] == ['Lote 1', 'Talhão Sul']

@@ -38,6 +38,11 @@ APP = 'Penetro3D'
 
 VERDE1, VERDE3, VERDE5 = '#155A54', '#00A76D', '#72BF44'
 FUNDO, CARTAO, LINHA = '#F4F6F2', '#FFFFFF', '#DCE3D9'
+
+
+def num_br(v, casas=0):
+    """1234.5 → '1.234,5' (cópia leve da do núcleo: o núcleo só carrega quando usado)."""
+    return f'{v:,.{casas}f}'.replace(',', '\x00').replace('.', ',').replace('\x00', '.')
 TINTA, TINTA2, TINTA3 = '#12211D', '#3E4F49', '#6C7B75'
 AMBAR, VERMELHO, CINZA = '#C8860D', '#C62828', '#727D84'
 AVISO_FUNDO = '#E4F1E9'
@@ -89,6 +94,116 @@ def abrir_janela():
     import webbrowser
     from tkinter import filedialog, messagebox, ttk
 
+    class Navegador:
+        """Miniatura de UM talhão por vez, com setas para os outros e o nome editável.
+
+        Vários talhões juntos numa miniatura de 200 px viravam riscos ilegíveis; aqui cada
+        um ocupa o quadro inteiro. O nome fica num campo de texto: o KML muitas vezes traz
+        um código ("Placemark 00012"), e trocar o nome é só clicar, digitar e Enter.
+
+        Cada item: {'chave', 'nome', 'nome_kml', 'aneis', 'pontos', 'extra'}.
+        """
+
+        def __init__(self, jan, pai, larg, alt, ao_mudar=None, ao_renomear=None):
+            self.jan, self.itens, self.i = jan, [], 0
+            self.ao_mudar, self.ao_renomear = ao_mudar, ao_renomear
+            self.frame = ttk.Frame(pai)
+            topo = ttk.Frame(self.frame)
+            topo.pack(fill='x')
+            self.topo = topo
+            self.bt_ant = ttk.Button(topo, text='◀', width=3, command=lambda: self.ir(-1))
+            self.bt_prox = ttk.Button(topo, text='▶', width=3, command=lambda: self.ir(+1))
+            self.v_nome = tk.StringVar()
+            self.en = ttk.Entry(topo, textvariable=self.v_nome, justify='center',
+                                font=('Segoe UI', 9, 'bold'))
+            self.en.pack(side='left', fill='x', expand=True)
+            self.en.bind('<Return>', self._confirmar)
+            self.en.bind('<KP_Enter>', self._confirmar)
+            self.en.bind('<FocusOut>', self._confirmar)
+            self.en.bind('<Escape>', lambda e: self._mostrar())
+            self.canvas = tk.Canvas(self.frame, width=larg, height=alt, bg=FUNDO,
+                                    highlightthickness=1, highlightbackground=LINHA)
+            self.canvas.pack(pady=(4, 0))
+            self.lb = ttk.Label(self.frame, text='', style='Dica.TLabel', justify='center',
+                                anchor='center', wraplength=larg)
+            self.lb.pack(fill='x', pady=(3, 0))
+            self.limpar()
+
+        def limpar(self, aviso=''):
+            self.itens, self.i = [], 0
+            self.v_nome.set('')
+            self.en.configure(state='disabled')
+            self._setas(False)
+            self.canvas.delete('all')
+            self.lb.configure(text=f'{aviso}\n ' if '\n' not in aviso else aviso)
+
+        def definir(self, itens, manter=False):
+            """Troca a lista. Com manter=True fica no mesmo talhão (pela chave)."""
+            chave = self.atual()['chave'] if (manter and self.itens) else None
+            self.itens = list(itens)
+            if not self.itens:
+                self.limpar()
+                return
+            pos = [k for k, it in enumerate(self.itens) if it['chave'] == chave]
+            self.i = pos[0] if pos else 0
+            self._mostrar()
+
+        def atual(self):
+            return self.itens[self.i] if self.itens else None
+
+        def ir(self, passo):
+            if len(self.itens) < 2:
+                return
+            self._confirmar()
+            self.i = (self.i + passo) % len(self.itens)
+            self._mostrar()
+            if self.ao_mudar:
+                self.ao_mudar(self.i)
+
+        def redesenhar(self):
+            if self.itens:
+                self._mostrar()
+
+        def _setas(self, mostrar):
+            if mostrar:
+                self.bt_ant.pack(side='left', before=self.en, padx=(0, 4))
+                self.bt_prox.pack(side='right', before=self.en, padx=(4, 0))
+            else:
+                self.bt_ant.pack_forget()
+                self.bt_prox.pack_forget()
+
+        def _mostrar(self):
+            it, n = self.atual(), len(self.itens)
+            self._setas(n > 1)
+            self.en.configure(state='normal')
+            self.v_nome.set(it['nome'])
+            self.jan._mapinha(self.canvas, it['aneis'], it.get('pontos'))
+            # duas linhas no máximo: o quadro divide a altura com a conferência
+            linha1 = ' · '.join(x for x in ((f'{self.i + 1} de {n}' if n > 1 else ''),
+                                            it.get('extra') or '') if x)
+            renomeado = it.get('nome_kml') and it['nome_kml'] != it['nome']
+            linha2 = (f'no KML: {it["nome_kml"]}' if renomeado
+                      else 'clique no nome para renomear')
+            self.lb.configure(text=f'{linha1 or " "}\n{linha2}')   # sempre 2 linhas
+
+        def _confirmar(self, _e=None):
+            it = self.atual()
+            if not it or str(self.en['state']) == 'disabled':
+                return
+            novo = ' '.join(self.v_nome.get().split())
+            if not novo or novo == it['nome']:
+                self.v_nome.set(it['nome'])
+                return
+            if any(o is not it and o['nome'].casefold() == novo.casefold()
+                   for o in self.itens):
+                self.v_nome.set(it['nome'])
+                messagebox.showwarning(APP, f'Já existe um talhão chamado "{novo}".')
+                return
+            it['nome'] = novo
+            self._mostrar()
+            if self.ao_renomear:
+                self.ao_renomear(it['chave'], novo)
+
     class Janela:
         def __init__(self, raiz):
             self.raiz = raiz
@@ -107,6 +222,9 @@ def abrir_janela():
             self.talhoes_plano = None
             self.htmls = []
             self.kmls_rel, self.kmls_pl = [], []
+            # nomes dados pelo usuário, por chave estável do talhão (arquivo + posição);
+            # valem nas duas abas e nos arquivos gerados
+            self.apelidos = {}
             self.info_atualizacao = None
 
             raiz._penetro3d = self          # ponto de entrada para testes de interface
@@ -417,9 +535,10 @@ def abrir_janela():
             self.tv.grid(row=0, column=0, sticky='we')
             self.tv.bind('<<TreeviewSelect>>', lambda e: self._previa_plano())
 
-            self.cv_pl = tk.Canvas(corpo, width=self.px(230), height=self.px(200), bg=FUNDO,
-                                   highlightthickness=1, highlightbackground=LINHA)
-            self.cv_pl.grid(row=0, column=1, rowspan=3, sticky='n', padx=(14, 0))
+            self.nav_pl = Navegador(self, corpo, self.px(230), self.px(200),
+                                    ao_mudar=self._talhao_plano_mudou,
+                                    ao_renomear=self._renomear)
+            self.nav_pl.frame.grid(row=0, column=1, rowspan=3, sticky='n', padx=(14, 0))
 
             self.lb_nivel = ttk.Label(corpo, text='', style='Rot.TLabel',
                                       wraplength=self.px(640), justify='left')
@@ -452,21 +571,23 @@ def abrir_janela():
                 state='normal' if self.kmls_pl and not self.rodando_pl else 'disabled')
             self.bt_exportar.configure(state='disabled')
             self.planos = None
+            self.talhoes_plano = None
             for i in self.tv.get_children():
                 self.tv.delete(i)
-            self.cv_pl.delete('all')
+            self.nav_pl.limpar()
             self.lb_nivel.configure(text='')
             if self.kmls_pl:
                 self._limpa(self.txt_pl)
                 self._escreve(self.txt_pl, 'Clique em "Calcular malha".', 'fraco')
                 threading.Thread(target=self._deduzir_epsg, daemon=True,
-                                 args=(list(self.kmls_pl), 'pl')).start()
+                                 args=(list(self.kmls_pl), 'pl', dict(self.apelidos))).start()
 
-        def _deduzir_epsg(self, kmls, onde):
+        def _deduzir_epsg(self, kmls, onde, apelidos=None):
             try:
                 from penetro3d_core import carregar_talhoes, epsg_sugerido
-                t = carregar_talhoes(kmls)
+                t = carregar_talhoes(kmls, apelidos)
                 self.fila.put(('epsg', (onde, *epsg_sugerido(t))))
+                self.fila.put(('talhoes', (onde, tuple(kmls), t)))
             except Exception as e:                                   # noqa: BLE001
                 self.fila.put(('epsg_erro', (onde, str(e))))
 
@@ -487,12 +608,14 @@ def abrir_janela():
             self._limpa(self.txt_pl)
             self._escreve(self.txt_pl, 'Calculando…', 'fraco')
             kmls = list(self.kmls_pl)
+            apelidos = dict(self.apelidos)
 
             def trabalho():
                 try:
                     from penetro3d_amostragem import comparar
                     from penetro3d_core import carregar_talhoes
-                    saida = [(t, *comparar(t, epsg, recuo)) for t in carregar_talhoes(kmls)]
+                    saida = [(t, *comparar(t, epsg, recuo))
+                             for t in carregar_talhoes(kmls, apelidos)]
                     self.fila.put(('plano', saida))
                 except Exception as e:                               # noqa: BLE001
                     self.fila.put(('erro', (str(e), traceback.format_exc(), 'pl')))
@@ -500,19 +623,39 @@ def abrir_janela():
             threading.Thread(target=trabalho, daemon=True).start()
 
         def _mostrar_plano(self, saida):
-            from penetro3d_amostragem import NIVEIS
             self.talhoes_plano = saida
-            self.planos = saida[0][2]
-            for i in self.tv.get_children():
-                self.tv.delete(i)
+            self._resumo_plano()
+            self.nav_pl.definir([self._item_talhao(t) for t, _, _ in saida], manter=True)
+            self._talhao_plano_mudou(self.nav_pl.i)
+            self.bt_exportar.configure(state='normal')
+
+        def _item_talhao(self, t, pontos=None, extra=''):
+            return {'chave': t['chave'], 'nome': t['nome'], 'nome_kml': t.get('nome_kml'),
+                    'aneis': [t['anel']] + list(t.get('ilhas') or []),
+                    'pontos': pontos or [], 'extra': extra}
+
+        def _resumo_plano(self):
+            """Texto com os três níveis de cada talhão (refeito ao renomear)."""
             self._limpa(self.txt_pl)
-            for t, tab, planos in saida:
-                self._escreve(self.txt_pl, t['nome'], 'forte')
+            for t, tab, planos in self.talhoes_plano or []:
+                self._escreve(self.txt_pl, t['nome'], 'forte', rolar=False)
                 for _, r in tab.iterrows():
                     self._escreve(self.txt_pl,
                                   f"  {r['nivel']:<18} {r['pontos']:>3} pontos · "
                                   f"{r['densidade_real_pt_ha']} pt/ha · malha "
-                                  f"{r['espacamento_m']:.0f} m · {r['caminhada_km']} km")
+                                  f"{r['espacamento_m']:.0f} m · {r['caminhada_km']} km",
+                                  rolar=False)
+
+        def _talhao_plano_mudou(self, i):
+            """A tabela de níveis e a prévia passam a ser do talhão mostrado."""
+            if not self.talhoes_plano:
+                return
+            from penetro3d_amostragem import NIVEIS
+            sel = self.tv.selection()
+            nivel = sel[0] if sel else 'intermediario'
+            self.planos = self.talhoes_plano[i][2]
+            for iid in self.tv.get_children():
+                self.tv.delete(iid)
             for chave, p in self.planos.items():
                 cfg = NIVEIS[chave]
                 self.tv.insert('', 'end', iid=chave, values=(
@@ -520,8 +663,8 @@ def abrir_janela():
                     p['densidade_real'], f"{p['espacamento_m']:.0f} m",
                     f"{p['cobertura_m']:.0f} m", f"{p['caminhada_km']} km",
                     f"{round(p['n'] * 4.5 / 60 + p['caminhada_km'] / 4.0, 1)} h"))
-            self.tv.selection_set('intermediario')
-            self.bt_exportar.configure(state='normal')
+            self.tv.selection_set(nivel if nivel in self.planos else 'intermediario')
+            self._previa_plano()
 
         def _previa_plano(self):
             if not self.planos:
@@ -536,10 +679,30 @@ def abrir_janela():
             self.lb_nivel.configure(
                 text=f"{cfg['rotulo']} — para {cfg['para_que']}. "
                      f"Entrega: {cfg['entrega']}. Não entrega: {cfg['nao_entrega']}.")
-            t = self.talhoes_plano[0][0]
-            aneis_ll = [t['anel']] + list(t.get('ilhas') or [])
-            pts = [(r.lon, r.lat, VERDE1) for r in p['pontos'].itertuples()]
-            self._mapinha(self.cv_pl, aneis_ll, pts)
+            it = self.nav_pl.atual()
+            if it:
+                it['pontos'] = [(r.lon, r.lat, VERDE1) for r in p['pontos'].itertuples()]
+                it['extra'] = f"{p['n']} pontos · {num_br(p['area_ha'], 1)} ha"
+                self.nav_pl.redesenhar()
+
+        def _renomear(self, chave, novo):
+            """Nome novo vale nas duas abas e em tudo o que for gerado depois."""
+            self.apelidos[chave] = novo
+            for t, _, planos in self.talhoes_plano or []:
+                if t['chave'] == chave:
+                    t['nome'] = novo
+                    for p in planos.values():
+                        p['talhao'] = novo
+            if self.talhoes_plano:
+                self._resumo_plano()
+            for nav in (self.nav_pl, self.nav_rel):
+                for it in nav.itens:
+                    if it['chave'] == chave and it['nome'] != novo:
+                        it['nome'] = novo
+                        nav.redesenhar()
+            # a conferência lista os talhões pelo nome: refaz com o nome novo
+            if any(it['chave'] == chave for it in self.nav_rel.itens):
+                self._agendar_conferencia()
 
         def _exportar_plano(self):
             sel = self.tv.selection()
@@ -618,14 +781,20 @@ def abrir_janela():
                 row=lin, column=0, sticky='w', pady=(14, 2)); lin += 1
             conf = ttk.Frame(q)
             conf.grid(row=lin, column=0, sticky='nsew')
-            q.rowconfigure(lin, weight=1); lin += 1
+            linha_conf = lin
+            q.rowconfigure(lin, weight=3); lin += 1
             conf.columnconfigure(0, weight=1)
             env, self.txt_conf = self._texto(conf, 11)
             env.grid(row=0, column=0, sticky='nsew')
             conf.rowconfigure(0, weight=1)
-            self.cv_rel = tk.Canvas(conf, width=self.px(210), height=self.px(190), bg=FUNDO,
-                                    highlightthickness=1, highlightbackground=LINHA)
-            self.cv_rel.grid(row=0, column=1, sticky='n', padx=(12, 0))
+            self.nav_rel = Navegador(self, conf, self.px(210), self.px(118),
+                                     ao_renomear=self._renomear)
+            self.nav_rel.frame.grid(row=0, column=1, sticky='n', padx=(12, 0))
+            # a conferência nunca fica mais baixa que o quadro do talhão (setas + mapa +
+            # legenda); senão a legenda some cortada
+            conf.update_idletasks()
+            q.rowconfigure(linha_conf, weight=3,
+                           minsize=self.nav_rel.frame.winfo_reqheight() + self.px(16))
 
             rod = ttk.Frame(q)
             rod.grid(row=lin, column=0, sticky='we', pady=(12, 0)); lin += 1
@@ -651,7 +820,9 @@ def abrir_janela():
             self.bt_abrir.pack(side='left')
 
             env2, self.txt_log = self._texto(q, 5)
-            env2.grid(row=lin, column=0, sticky='we', pady=(10, 0))
+            # o registro cede altura antes da conferência quando a janela é baixa
+            env2.grid(row=lin, column=0, sticky='nsew', pady=(10, 0))
+            q.rowconfigure(lin, weight=1, minsize=self.px(60))
 
             for v in (self.v_projeto, self.v_xlsx, self.v_saida):
                 v.trace_add('write', lambda *a: self._rotulo_botao())
@@ -684,7 +855,9 @@ def abrir_janela():
             self._rotulo_botao()
             if self.kmls_rel:
                 threading.Thread(target=self._deduzir_epsg, daemon=True,
-                                 args=(list(self.kmls_rel), 'rel')).start()
+                                 args=(list(self.kmls_rel), 'rel', dict(self.apelidos))).start()
+            else:
+                self.nav_rel.limpar()
             if self.kmls_rel and self.v_xlsx.get().strip():
                 self._conferir()
 
@@ -719,22 +892,23 @@ def abrir_janela():
             self._escreve(self.txt_conf, 'Conferindo os arquivos…', 'fraco')
             kmls, xlsx = list(self.kmls_rel), self.v_xlsx.get().strip()
             epsg_txt, tol_txt = self.v_epsg.get().strip(), self.v_tol.get().strip()
+            apelidos = dict(self.apelidos)
 
             def trabalho():
                 try:
                     from penetro3d_core import (atribuir_pontos, carregar_talhoes,
                                                 conferencia, epsg_sugerido, ler_falker)
-                    talhoes = carregar_talhoes(kmls)
+                    talhoes = carregar_talhoes(kmls, apelidos)
                     try:
                         epsg = int(epsg_txt)
                     except ValueError:
                         epsg = epsg_sugerido(talhoes)[0]
                     tol = float(tol_txt.replace(',', '.') or 30)
-                    c = conferencia(kmls, xlsx, epsg, tol)
+                    c = conferencia(kmls, xlsx, epsg, tol, apelidos)
                     pontos, *_ = ler_falker(xlsx)
-                    _, sit = atribuir_pontos(pontos, talhoes, epsg, tol)
-                    pts = [(float(pontos.lon.iloc[i]), float(pontos.lat.iloc[i]), sit[i])
-                           for i in range(len(pontos))]
+                    idx, sit = atribuir_pontos(pontos, talhoes, epsg, tol)
+                    pts = [(float(pontos.lon.iloc[i]), float(pontos.lat.iloc[i]), sit[i],
+                            int(idx[i])) for i in range(len(pontos))]
                     self.fila.put(('conf', (geracao, c, talhoes, pts)))
                 except Exception as e:                               # noqa: BLE001
                     self.fila.put(('conf_erro', (geracao, str(e), traceback.format_exc())))
@@ -760,13 +934,24 @@ def abrir_janela():
                     E(f"   → {a['acao']}", 'fraco')
             self.txt_conf.see('1.0')          # começa mostrando o topo, não o fim
 
-            # miniatura: talhões + pontos coloridos pela situação
+            # miniatura: um talhão por vez, com os pontos dele coloridos pela situação
+            # (e os pontos fora de todos os talhões que caem perto dele, em vermelho)
             cores = {'interno': VERDE1, 'borda': AMBAR, 'fora': VERMELHO}
-            aneis_ll = []
-            for t in talhoes:
-                aneis_ll.append(t['anel'])
-                aneis_ll += list(t.get('ilhas') or [])
-            self._mapinha(self.cv_rel, aneis_ll, [(x, y, cores[s]) for x, y, s in pts])
+            resumo = {r['nome']: r for r in c['talhoes']}
+            itens = []
+            for j, t in enumerate(talhoes):
+                lons = [p[0] for p in t['anel']]
+                lats = [p[1] for p in t['anel']]
+                mx, my = (max(lons) - min(lons)) * .3, (max(lats) - min(lats)) * .3
+                perto = lambda x, y: (min(lons) - mx <= x <= max(lons) + mx      # noqa: E731
+                                      and min(lats) - my <= y <= max(lats) + my)
+                meus = [(x, y, cores[s]) for x, y, s, k in pts
+                        if k == j or (k < 0 and perto(x, y))]
+                r = resumo.get(t['nome'])
+                extra = (f"{r['n']} perfis · {num_br(r['densidade'], 2)} pt/ha"
+                         if r else '')
+                itens.append(self._item_talhao(t, meus, extra))
+            self.nav_rel.definir(itens, manter=True)
             self._rotulo_botao()
 
         def _gerar(self):
@@ -796,14 +981,15 @@ def abrir_janela():
 
             args = (self.v_projeto.get().strip(), list(self.kmls_rel),
                     self.v_xlsx.get().strip(), self.v_saida.get().strip(),
-                    epsg, res, tol, self.v_offline.get())
+                    epsg, res, tol, self.v_offline.get(), dict(self.apelidos))
 
             def trabalho():
                 try:
                     from penetro3d_core import processar_projeto
                     r = processar_projeto(args[0], args[1], args[2], args[3], epsg=args[4],
                                           res_m=args[5], tol_borda=args[6], offline=args[7],
-                                          log=lambda m: self.fila.put(('log', m)))
+                                          log=lambda m: self.fila.put(('log', m)),
+                                          apelidos=args[8])
                     self.fila.put(('fim', r))
                 except Exception as e:                               # noqa: BLE001
                     self.fila.put(('erro', (str(e), traceback.format_exc(), 'rel')))
@@ -915,6 +1101,16 @@ def abrir_janela():
                 onde, epsg, nota = carga
                 (self.v_epsg_pl if onde == 'pl' else self.v_epsg).set(str(epsg))
                 (self.lb_epsg_pl if onde == 'pl' else self.lb_epsg).configure(text=nota)
+            elif tipo == 'talhoes':
+                onde, kmls, talhoes = carga
+                if onde == 'pl':
+                    # só a prévia dos contornos, antes de calcular; não atropela um plano
+                    if tuple(self.kmls_pl) == kmls and not self.talhoes_plano:
+                        self.nav_pl.definir([self._item_talhao(
+                            t, extra='Clique em "Calcular malha"') for t in talhoes])
+                elif tuple(self.kmls_rel) == kmls and self.conf is None:
+                    self.nav_rel.definir([self._item_talhao(t) for t in talhoes],
+                                         manter=True)
             elif tipo == 'epsg_erro':
                 onde, msg = carga
                 (self.lb_epsg_pl if onde == 'pl' else self.lb_epsg).configure(

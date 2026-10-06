@@ -28,6 +28,8 @@ Também planeja a coleta (malha hexagonal em três níveis de densidade) e expor
 | **1 · Planejar coleta** | KML dos talhões | pontos em KMZ/KML para Google Earth, GPX, GeoJSON ou CSV |
 | **2 · Gerar relatórios** | nome do projeto, KML ou KMZ dos talhões, uma planilha do Falker | uma pasta por talhão com HTML 3D, PDF e CSVs |
 
+Nas duas abas, o quadro ao lado mostra **um talhão por vez**; com mais de um, as setas ◀ ▶ passam de um para outro (no planejamento, a tabela de níveis acompanha o talhão mostrado). Para **renomear** um talhão que veio do KML com um nome estranho, clique no nome acima do mapa, digite e tecle Enter: o nome novo vale para os planos, os relatórios e as pastas, e o resumo do projeto guarda o nome original do KML.
+
 Os pontos da planilha são distribuídos entre os talhões pela posição GPS. Um ponto fora do polígono, a até 30 m da divisa, entra como "borda". Um ponto fora de todos os talhões aparece em `pontos_nao_atribuidos.csv`. Antes de gerar, o painel de conferência avisa sobre perfis incompletos, leituras atípicas (pedra, raiz), perfis repetidos no mesmo lugar, contorno de KML que se cruza, planilha em MPa e densidade amostral baixa. Uma leitura em branco no meio de um perfil é preenchida pelas vizinhas; a profundidade da análise é decidida por talhão, e um talhão com problema não impede os outros de serem gerados.
 
 Para experimentar, use os arquivos da pasta `exemplos`, que também é instalada junto com o programa.

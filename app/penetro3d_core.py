@@ -186,7 +186,7 @@ def _tag(el):
     return el.tag.rsplit('}', 1)[-1]
 
 
-def carregar_talhoes(caminhos_kml):
+def carregar_talhoes(caminhos_kml, apelidos=None):
     """Lê os KML e devolve [{'nome', 'arquivo', 'anel', 'ilhas'}] — um item por polígono.
 
     Percorre o XML de verdade (e não por expressão regular), porque o Google Earth
@@ -195,10 +195,17 @@ def carregar_talhoes(caminhos_kml):
     Buracos (<innerBoundaryIs>) são preservados e recortados da área. Aceita também
     KMZ (o KML compactado que o Google Earth exporta) e contornos desenhados como
     caminho fechado (<LineString> que termina onde começa).
+
+    Cada talhão recebe uma 'chave' estável (arquivo + posição no arquivo). Com
+    `apelidos` = {chave: nome}, o usuário troca o nome que veio do KML — muitas vezes
+    um código sem sentido — e o novo nome vale para relatórios, pastas e planos. O
+    nome original fica em 'nome_kml'.
     """
     talhoes = []
+    apelidos = apelidos or {}
     for caminho in caminhos_kml:
         base = os.path.splitext(os.path.basename(caminho))[0]
+        contador = 0
         try:
             raiz = _ler_xml_kml(caminho)
         except (ET.ParseError, OSError, zipfile.BadZipFile, KeyError) as e:
@@ -242,7 +249,11 @@ def carregar_talhoes(caminhos_kml):
                     rot = f'{rot} ({j + 1})'
                 elif not nome and len(marcas) > 1:
                     rot = f'{base}_{i + 1}'
-                talhoes.append({'nome': rot, 'arquivo': os.path.basename(caminho),
+                chave = f'{os.path.abspath(caminho)}#{contador}'
+                contador += 1
+                novo = str(apelidos.get(chave) or '').strip()
+                talhoes.append({'nome': novo or rot, 'nome_kml': rot, 'chave': chave,
+                                'arquivo': os.path.basename(caminho),
                                 'anel': fora, 'ilhas': dentro})
                 achou += 1
         if not achou:
@@ -1024,7 +1035,8 @@ def confiabilidade(dens):
                             'estimada. Trate o resultado como sondagem exploratória.')
 
 
-def conferencia(caminhos_kml, caminho_xlsx, epsg=UTM_EPSG, tol_borda=TOL_BORDA):
+def conferencia(caminhos_kml, caminho_xlsx, epsg=UTM_EPSG, tol_borda=TOL_BORDA,
+                apelidos=None):
     """Diagnóstico dos arquivos antes de processar. Nada aqui escreve arquivo.
 
     Devolve {'achados': [...], 'talhoes': [...], 'pode_prosseguir': bool}. Cada achado
@@ -1034,7 +1046,7 @@ def conferencia(caminhos_kml, caminho_xlsx, epsg=UTM_EPSG, tol_borda=TOL_BORDA):
     add = lambda n, t, d, a=None: achados.append(                      # noqa: E731
         {'nivel': n, 'titulo': t, 'detalhe': d, 'acao': a})
 
-    talhoes = carregar_talhoes(caminhos_kml)
+    talhoes = carregar_talhoes(caminhos_kml, apelidos)
     pontos, prof, CI, data_coleta, avisos = ler_falker(caminho_xlsx)
     for a in avisos:
         add(NIVEL_ATENCAO, 'Leitura da planilha', a)
@@ -1102,7 +1114,7 @@ def conferencia(caminhos_kml, caminho_xlsx, epsg=UTM_EPSG, tol_borda=TOL_BORDA):
 # ──────────────────────────────────────────────────────────── projeto completo ──
 def processar_projeto(projeto, caminhos_kml, caminho_xlsx, pasta_saida,
                       epsg=UTM_EPSG, res_m=RES_M, tol_borda=TOL_BORDA,
-                      offline=True, log=print):
+                      offline=True, log=print, apelidos=None):
     """Roda o projeto inteiro e devolve o resumo. `log` recebe cada linha de progresso.
 
     Estrutura de saída:
@@ -1122,8 +1134,11 @@ def processar_projeto(projeto, caminhos_kml, caminho_xlsx, pasta_saida,
     destino = os.path.join(pasta_saida, slug(projeto, padrao='projeto'))
     os.makedirs(destino, exist_ok=True)
 
-    talhoes = carregar_talhoes(caminhos_kml)
+    talhoes = carregar_talhoes(caminhos_kml, apelidos)
     log(f'{len(talhoes)} talhão(ões) lido(s) de {len(caminhos_kml)} arquivo(s) KML')
+    for t in talhoes:
+        if t['nome'] != t['nome_kml']:
+            log(f'  "{t["nome_kml"]}" (KML) renomeado para "{t["nome"]}"')
     for t in talhoes:
         if contorno_corrigido(t):
             log(f'  aviso: o contorno de {t["nome"]} se cruza no KML — geometria corrigida, '
@@ -1161,7 +1176,8 @@ def processar_projeto(projeto, caminhos_kml, caminho_xlsx, pasta_saida,
     for j, t in enumerate(talhoes):
         sel = np.where(idx == j)[0]
         nome = t['nome']
-        linha_resumo = {'talhao': nome, 'arquivo_kml': t['arquivo'], 'n_pontos': len(sel)}
+        linha_resumo = {'talhao': nome, 'nome_no_kml': t.get('nome_kml', nome),
+                        'arquivo_kml': t['arquivo'], 'n_pontos': len(sel)}
         if len(sel) < MIN_PONTOS:
             log(f'  [{nome}] ignorado: {len(sel)} ponto(s), mínimo de {MIN_PONTOS} '
                 f'para interpolar')
