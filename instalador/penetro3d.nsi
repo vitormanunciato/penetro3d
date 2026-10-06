@@ -80,15 +80,30 @@ Function Abrir
 FunctionEnd
 
 ; Quando a atualização parte de dentro do programa, ele fecha logo depois de abrir o
-; instalador — mas pode levar alguns segundos. Enquanto o Python estiver em uso, a
-; DLL dele fica travada; a espera é sobre ela.
-Function EsperarFechar
+; instalador — mas pode levar alguns segundos. A espera tenta abrir para escrita a
+; DLL do Python e o pythonw.exe: enquanto o programa roda, o Windows recusa.
+; (Até a 1.4.x a checagem renomeava a DLL, mas o Windows deixa renomear uma DLL em
+; uso — a checagem passava com o programa aberto e deixava "python313.dll.velha".)
+!ifndef PYDLL
+  !define PYDLL "python313.dll"
+!endif
+!macro ESPERAR_FECHAR UN
+Function ${UN}EsperarFechar
+  Delete "$INSTDIR\python313.dll.velha"
   StrCpy $0 0
   laco:
-    IfFileExists "$INSTDIR\python\python313.dll" 0 livre
     ClearErrors
-    Rename "$INSTDIR\python\python313.dll" "$INSTDIR\python313.dll.velha"
-    IfErrors 0 movida
+    IfFileExists "$INSTDIR\python\${PYDLL}" 0 +4
+      FileOpen $1 "$INSTDIR\python\${PYDLL}" a
+      IfErrors ocupado
+      FileClose $1
+    ClearErrors
+    IfFileExists "$INSTDIR\python\pythonw.exe" 0 +4
+      FileOpen $1 "$INSTDIR\python\pythonw.exe" a
+      IfErrors ocupado
+      FileClose $1
+    Goto livre
+  ocupado:
     IntOp $0 $0 + 1
     IntCmp $0 30 pergunta
     Sleep 500
@@ -99,20 +114,24 @@ Function EsperarFechar
   repetir:
     StrCpy $0 0
     Goto laco
-  movida:
-    Delete "$INSTDIR\python313.dll.velha"
   livre:
 FunctionEnd
+!macroend
+!insertmacro ESPERAR_FECHAR ""
+!insertmacro ESPERAR_FECHAR "un."
 
 ; ── instalação ─────────────────────────────────────────────────────────────────
 Section "Penetro3D" SecPrincipal
   SectionIn RO
   Call EsperarFechar
 
-  ; versão anterior sai inteira: arquivo velho esquecido é fonte de erro difícil
-  RMDir /r "$INSTDIR\python"
-  RMDir /r "$INSTDIR\app"
-  RMDir /r "$INSTDIR\exemplos"
+  ; versão anterior sai inteira: arquivo velho esquecido é fonte de erro difícil.
+  ; Só apaga se a pasta for mesmo uma instalação do Penetro3D: com /D= apontando
+  ; para outro lugar, "app" e "python" poderiam ser pastas do usuário.
+  IfFileExists "$INSTDIR\Desinstalar.exe" 0 +4
+    RMDir /r "$INSTDIR\python"
+    RMDir /r "$INSTDIR\app"
+    RMDir /r "$INSTDIR\exemplos"
 
   SetOutPath "$INSTDIR"
   File /r "${PALCO}\*"
@@ -149,9 +168,12 @@ SectionEnd
 ; Apaga só o que o instalador pôs. A pasta do usuário (%LOCALAPPDATA%\Penetro3D,
 ; com preferências) e os relatórios gerados ficam.
 Section "Uninstall"
-  RMDir /r "$INSTDIR\python"
-  RMDir /r "$INSTDIR\app"
-  RMDir /r "$INSTDIR\exemplos"
+  Call un.EsperarFechar
+  IfFileExists "$INSTDIR\Desinstalar.exe" 0 +4
+    RMDir /r "$INSTDIR\python"
+    RMDir /r "$INSTDIR\app"
+    RMDir /r "$INSTDIR\exemplos"
+  Delete "$INSTDIR\python313.dll.velha"
   Delete "$INSTDIR\LEIA-ME.txt"
   Delete "$INSTDIR\Desinstalar.exe"
   RMDir "$INSTDIR"

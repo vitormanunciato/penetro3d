@@ -6,7 +6,7 @@ antes de gerar o instalador. Para lançar uma versão nova: mude aqui, faça com
 crie a tag `vX.Y.Z` e envie.
 """
 
-VERSAO = '1.4.3'
+VERSAO = '1.5.0'
 AUTOR = 'ANUNCIATO, V.M.'
 
 # repositório que distribui as atualizações

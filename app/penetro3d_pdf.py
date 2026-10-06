@@ -34,7 +34,8 @@ from reportlab.lib.units import cm                      # noqa: E402
 from reportlab.platypus import (BaseDocTemplate, Frame, Image, PageBreak,  # noqa: E402
                                 PageTemplate, Paragraph, Spacer, Table, TableStyle)
 
-from penetro3d_core import CMAX_KPA, LIM_CRIT, LIM_MOD, RAMPA, aneis, num_br, num_cm  # noqa: E402
+from penetro3d_core import (CMAX_KPA, LIM_CRIT, LIM_MOD, RAMPA, aneis, esc, num_br,  # noqa: E402
+                            num_cm, rotulo_camada)
 from penetro3d_versao import AUTOR  # noqa: E402
 
 VERDE1, CINZA, AMBAR, VERMELHO = '#155A54', '#727D84', '#F7A823', '#EE3124'
@@ -99,6 +100,11 @@ def _recorte(poli):
     return PathPatch(Path(vert, cod), facecolor='none', edgecolor='none')
 
 
+def _mpl(txt):
+    """Texto do usuário no matplotlib: "$" abriria fórmula matemática e quebraria."""
+    return str(txt).replace('$', r'\$')
+
+
 def _mapa(ax, R, grade, vmin, vmax, cmap=CMAP, pontos_xy=None, dentro=None, rotulos=None):
     """Desenha uma grade interpolada com o contorno do talhão e os pontos."""
     gx, gy = R['gx'], R['gy']
@@ -121,7 +127,7 @@ def _mapa(ax, R, grade, vmin, vmax, cmap=CMAP, pontos_xy=None, dentro=None, rotu
         ax.scatter(*pontos_xy, s=14, c=cor, edgecolors=TINTA, linewidths=.7, zorder=4)
         if rotulos is not None:
             for x, y, t in zip(pontos_xy[0], pontos_xy[1], rotulos):
-                ax.annotate(t, (x, y), fontsize=5, color=TINTA, zorder=5,
+                ax.annotate(_mpl(t), (x, y), fontsize=5, color=TINTA, zorder=5,
                             xytext=(0, 5), textcoords='offset points', ha='center')
     ax.set_aspect('equal')
     ax.set_xticks([]); ax.set_yticks([]); ax.grid(False)
@@ -153,7 +159,7 @@ def fig_camadas(caminho, R, medias, camadas, S, pontos_xy, dentro, rotulos, V=No
         im = _mapa(ax, R, medias[c], 0, CMAX_KPA, pontos_xy=pontos_xy,
                    dentro=dentro, rotulos=rotulos)
         _barra_escala(ax, R['gx'], R['gy'])
-        ax.set_title(f'{a} – {b} cm', fontsize=9.5, color=TINTA, pad=27, loc='left',
+        ax.set_title(rotulo_camada(a, b), fontsize=9.5, color=TINTA, pad=27, loc='left',
                      fontweight='bold')
         ax.text(0, 1.075, f"média {num_br(S[c]['media'])} kPa · {S[c]['rest']}% restritivo",
                 transform=ax.transAxes, fontsize=6.5, color=TINTA3, va='bottom')
@@ -267,7 +273,7 @@ def figs_perfis_por_ponto(pasta, prof, CI, pontos, situacao, por_pagina=20, ncol
             # marcador preso à margem quando a leitura estoura a escala
             ax.plot(min(CI[k, i], xmax * .985), prof[k], 'o', ms=3.2, color=VERMELHO, zorder=4)
             marca = ' (borda)' if situacao is not None and situacao[i] == 'borda' else ''
-            ax.set_title(f'Ponto {pontos.id.iloc[i]}{marca}', fontsize=7.5,
+            ax.set_title(f'Ponto {_mpl(pontos.id.iloc[i])}{marca}', fontsize=7.5,
                          color=TINTA, pad=3)
             ax.tick_params(labelsize=6)
         for ax in axs[len(bloco):]:
@@ -313,11 +319,11 @@ def _html_para_reportlab(txt):
 def _tabela_kpis(S, camadas):
     pares = [(c, a, b) for c, a, b in camadas[:2] if c in S]
     dados = [
-        [f'Área com leitura\n> {num_br(LIM_CRIT)} kPa', 'Espessura somada\nacima do limite',
+        [f'Área com camada\n> {num_br(LIM_CRIT)} kPa', 'Espessura somada\nacima do limite',
          'Profundidade mediana\nda RP máxima']
-        + [f'RP média\n{a} – {b} cm' for c, a, b in pares],
+        + [f'RP média\n{rotulo_camada(a, b)}' for c, a, b in pares],
         [f"{S['restritiva_area']}%", f"{num_br(S['restritiva_esp'], 1)} cm",
-         f"{num_br(S['zmax_mediana'])} cm"]
+         f"{num_cm(S['zmax_mediana'])} cm"]
         + [f"{num_br(S[c]['media'])} kPa" for c, _, _ in pares],
     ]
     barras = [VERMELHO, AMBAR, AMBAR] + [
@@ -344,13 +350,15 @@ def _tabela_kpis(S, camadas):
 def _tabela_pontos(tabela, camadas):
     cols_cam = [(c, a, b) for c, a, b in camadas if c in tabela.columns]
     cab = (['Ponto', 'Latitude', 'Longitude', 'Situação']
-           + [f'{a}–{b}' for c, a, b in cols_cam] + ['RP máx.', 'Prof. máx.'])
+           + [f'{num_cm(a)}–{num_cm(b)}' for c, a, b in cols_cam] + ['RP máx.', 'Prof. máx.'])
     linhas = [cab]
+    est_id = ParagraphStyle('id', fontName='Helvetica', fontSize=7, leading=8.2,
+                            textColor=colors.HexColor(TINTA))
     for _, r in tabela.iterrows():
-        linhas.append([str(r['ponto']), f"{r['lat']:.6f}".replace('.', ','),
+        linhas.append([Paragraph(esc(r['ponto']), est_id), f"{r['lat']:.6f}".replace('.', ','),
                        f"{r['lon']:.6f}".replace('.', ','), r['situacao']]
                       + [num_br(r[c]) for c, _, _ in cols_cam]
-                      + [num_br(r['rp_max']), num_br(r['prof_rp_max'], 1) + ' cm'])
+                      + [num_br(r['rp_max']), num_cm(r['prof_rp_max']) + ' cm'])
     larg = ([1.3 * cm, 2.1 * cm, 2.1 * cm, 1.5 * cm] + [1.55 * cm] * len(cols_cam)
             + [1.6 * cm, 1.7 * cm])
     t = Table(linhas, colWidths=larg, repeatRows=1)
@@ -386,7 +394,7 @@ def gerar_pdf(caminho, ctx, pontos, prof, CI, R, S, medias, esp, zmax,
     """Monta o PDF completo do talhão."""
     est = _estilos()
     pontos_xy = (R['sx'], R['sy'])
-    rotulos = [str(v) for v in pontos.id]
+    rotulos = [str(v) for v in pontos.id] if len(pontos) <= 40 else None
     situacao = tabela['situacao'].to_numpy() if 'situacao' in tabela else None
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -403,7 +411,9 @@ def gerar_pdf(caminho, ctx, pontos, prof, CI, R, S, medias, esp, zmax,
             canv.setStrokeColor(colors.HexColor(VERDE1)); canv.setLineWidth(1.6)
             canv.line(2 * cm, A4[1] - 1.45 * cm, A4[0] - 2 * cm, A4[1] - 1.45 * cm)
             canv.setFont('Helvetica', 6.6); canv.setFillColor(colors.HexColor(TINTA3))
-            canv.drawString(2 * cm, A4[1] - 1.15 * cm, f"{ctx['projeto']} · {ctx['talhao']}")
+            cab = f"{ctx['projeto']} · {ctx['talhao']}"
+            canv.drawString(2 * cm, A4[1] - 1.15 * cm,
+                            cab if len(cab) <= 110 else cab[:107] + '…')
             canv.drawRightString(A4[0] - 2 * cm, 1.15 * cm, f'{doc.page}')
             canv.drawString(2 * cm, 1.15 * cm,
                             f'Penetro3D · relatório de penetrometria · {AUTOR}')
@@ -418,13 +428,13 @@ def gerar_pdf(caminho, ctx, pontos, prof, CI, R, S, medias, esp, zmax,
 
         L = 17.4 * cm
         el = []
-        el.append(Paragraph(ctx['projeto'].upper() + ' · PENETROMETRIA', est['olho']))
-        el.append(Paragraph(f"Compactação do solo — {ctx['talhao']}", est['titulo']))
+        el.append(Paragraph(esc(ctx['projeto'].upper()) + ' · PENETROMETRIA', est['olho']))
+        el.append(Paragraph(f"Compactação do solo — {esc(ctx['talhao'])}", est['titulo']))
         meta = [f"Área {num_br(R['area_ha'], 2)} ha", f'{len(pontos)} perfis',
                 f"{num_cm(prof.min())}–{num_cm(prof.max())} cm "
                 f"({len(prof)} leituras/perfil)", f"grade {num_br(R['res_m'])} m"]
         if ctx.get('data_coleta'):
-            meta.insert(2, f"coleta {ctx['data_coleta']}")
+            meta.insert(2, f"coleta {esc(ctx['data_coleta'])}")
         el.append(Paragraph(' · '.join(meta), est['nota']))
         el.append(Spacer(1, 7))
         el.append(_tabela_kpis(S, camadas))
@@ -439,7 +449,7 @@ def gerar_pdf(caminho, ctx, pontos, prof, CI, R, S, medias, esp, zmax,
             el.append(Paragraph(
                 'O selo acima de cada mapa vem de uma validação cruzada feita camada a '
                 'camada: compara a interpolação contra a alternativa mais simples, que é '
-                'usar a média do talhão. Onde a interpolação não reduz o erro, o desenho '
+                'usar a média do talhão. Onde a interpolação não reduz o erro em pelo menos 10%, o desenho '
                 'das manchas não tem suporte no dado — nesses mapas, leia o valor médio '
                 'e ignore a posição das cores.', est['corpo']))
         el.append(_img(f_camadas, L))

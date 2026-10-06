@@ -394,13 +394,14 @@ def _kml(plano):
 
 
 def _gpx(plano):
-    pts = '\n'.join(f'  <wpt lat="{r.lat:.7f}" lon="{r.lon:.7f}"><name>{r.id}</name>'
-                    f'<desc>{plano["talhao"]}</desc></wpt>'
+    from xml.sax.saxutils import escape     # nome de talhão com "&" quebrava o GPX
+    pts = '\n'.join(f'  <wpt lat="{r.lat:.7f}" lon="{r.lon:.7f}"><name>{escape(str(r.id))}'
+                    f'</name><desc>{escape(str(plano["talhao"]))}</desc></wpt>'
                     for r in plano['pontos'].itertuples())
     return (f'<?xml version="1.0" encoding="UTF-8"?>\n'
             f'<gpx version="1.1" creator="Penetro3D" '
             f'xmlns="http://www.topografix.com/GPX/1/1">\n'
-            f'  <metadata><author><name>{AUTOR}</name></author></metadata>\n'
+            f'  <metadata><author><name>{escape(AUTOR)}</name></author></metadata>\n'
             f'{pts}\n</gpx>')
 
 
@@ -448,7 +449,8 @@ def exportar_formato(plano, pasta, formato='kmz'):
     if formato == 'kmz':
         return _gravar_kmz(base, _kml(plano))
     if formato == 'csv':
-        plano['pontos'].to_csv(caminho, index=False)
+        plano['pontos'].to_csv(caminho, index=False, sep=';', decimal=',',
+                               encoding='utf-8-sig')
         return caminho
     if formato == 'geojson':
         with open(caminho, 'w', encoding='utf-8') as f:

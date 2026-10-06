@@ -93,7 +93,14 @@ def abrir_janela():
         def __init__(self, raiz):
             self.raiz = raiz
             self.fila = queue.Queue()
-            self.rodando = False
+            # um sinalizador por aba: com um só, terminar um planejamento liberava o
+            # botão "Gerar" no meio de um processamento de relatórios
+            self.rodando_pl = False
+            self.rodando_rel = False
+            self.baixando = False
+            self.instalador_baixado = None
+            self._conf_geracao = 0          # descarta conferências que ficaram para trás
+            self._conf_agendada = None
             self.destino = None
             self.conf = None
             self.planos = None
@@ -182,6 +189,37 @@ def abrir_janela():
             self._montar_relatorios()
             self.raiz.after(120, self._bombear)
             self.raiz.after(1500, lambda: self._verificar_atualizacao(False))
+            # erro dentro de um clique ou de um after(): sem isso some em silêncio (pythonw)
+            self.raiz.report_callback_exception = self._erro_interno
+            self.raiz.protocol('WM_DELETE_WINDOW', self._fechar)
+
+        def _ocupado(self):
+            return self.rodando_pl or self.rodando_rel or self.baixando
+
+        def _fechar(self):
+            if self._ocupado() and not messagebox.askyesno(
+                    APP, 'Ainda há um processamento ou download em andamento. Fechar agora '
+                         'deixa arquivos pela metade.\n\nFechar mesmo assim?'):
+                return
+            self.raiz.destroy()
+
+        def _erro_interno(self, tipo, valor, tb):
+            texto = ''.join(traceback.format_exception(tipo, valor, tb))
+            alvo = None
+            try:
+                import datetime
+                from penetro3d_atualizacao import pasta_usuario
+                alvo = os.path.join(pasta_usuario(), 'erro.txt')
+                with open(alvo, 'a', encoding='utf-8') as f:
+                    f.write(f'\n=== {datetime.datetime.now():%d/%m/%Y %H:%M} · {APP} '
+                            f'{VERSAO} (durante o uso) ===\n{texto}')
+            except Exception:                                        # noqa: BLE001
+                alvo = None
+            try:
+                messagebox.showerror(APP, f'Erro inesperado: {valor}\n\n'
+                                          + (f'Detalhes em:\n{alvo}' if alvo else ''))
+            except Exception:                                        # noqa: BLE001
+                pass
 
         def px(self, n):
             return int(round(n * self.esc))
@@ -228,7 +266,8 @@ def abrir_janela():
             def add():
                 for c in filedialog.askopenfilenames(
                         title='Selecione os KML dos talhões',
-                        filetypes=[('Google Earth KML', '*.kml'), ('Todos', '*.*')]):
+                        filetypes=[('Google Earth (KML, KMZ)', '*.kml *.kmz'),
+                                   ('Todos', '*.*')]):
                     if c not in destino:
                         destino.append(c)
                         cx.insert('end', os.path.basename(c))
@@ -340,7 +379,7 @@ def abrir_janela():
                               'densidade permite afirmar.', style='Rot.TLabel'
                       ).grid(row=0, column=0, columnspan=2, sticky='w', pady=(0, 12))
 
-            ttk.Label(q, text='Talhões (KML)', style='Secao.TLabel').grid(
+            ttk.Label(q, text='Talhões (KML ou KMZ)', style='Secao.TLabel').grid(
                 row=1, column=0, sticky='w', pady=(0, 4))
             self._lista_kml(q, self.kmls_pl, self._kml_plano_mudou).grid(
                 row=2, column=0, columnspan=2, sticky='we')
@@ -410,7 +449,7 @@ def abrir_janela():
 
         def _kml_plano_mudou(self):
             self.bt_calcular.configure(
-                state='normal' if self.kmls_pl and not self.rodando else 'disabled')
+                state='normal' if self.kmls_pl and not self.rodando_pl else 'disabled')
             self.bt_exportar.configure(state='disabled')
             self.planos = None
             for i in self.tv.get_children():
@@ -432,6 +471,8 @@ def abrir_janela():
                 self.fila.put(('epsg_erro', (onde, str(e))))
 
         def _planejar(self):
+            if self.rodando_pl:
+                return
             try:
                 epsg = int(self.v_epsg_pl.get().strip())
                 recuo = float(self.v_recuo.get().strip().replace(',', '.'))
@@ -441,7 +482,7 @@ def abrir_janela():
                 messagebox.showerror(APP, 'EPSG deve ser inteiro e o recuo, um número '
                                           'não negativo.')
                 return
-            self.rodando = True
+            self.rodando_pl = True
             self.bt_calcular.configure(state='disabled')
             self._limpa(self.txt_pl)
             self._escreve(self.txt_pl, 'Calculando…', 'fraco')
@@ -549,7 +590,7 @@ def abrir_janela():
             ttk.Entry(q, textvariable=self.v_projeto, font=('Segoe UI', 10)).grid(
                 row=lin, column=0, sticky='we', pady=(2, 10)); lin += 1
 
-            ttk.Label(q, text='Talhões (KML)', style='Secao.TLabel').grid(
+            ttk.Label(q, text='Talhões (KML ou KMZ)', style='Secao.TLabel').grid(
                 row=lin, column=0, sticky='w'); lin += 1
             self._lista_kml(q, self.kmls_rel, self._entrada_mudou).grid(
                 row=lin, column=0, sticky='we', pady=(2, 10)); lin += 1
@@ -614,7 +655,23 @@ def abrir_janela():
 
             for v in (self.v_projeto, self.v_xlsx, self.v_saida):
                 v.trace_add('write', lambda *a: self._rotulo_botao())
+            for v in (self.v_xlsx, self.v_epsg, self.v_tol):
+                v.trace_add('write', lambda *a: self._agendar_conferencia())
             self._rotulo_botao()
+
+        def _agendar_conferencia(self):
+            """Espera a digitação parar antes de conferir de novo."""
+            self.conf = None
+            self._rotulo_botao()
+            if self._conf_agendada:
+                self.raiz.after_cancel(self._conf_agendada)
+            self._conf_agendada = self.raiz.after(700, self._conferir_se_pronto)
+
+        def _conferir_se_pronto(self):
+            self._conf_agendada = None
+            x = self.v_xlsx.get().strip()
+            if self.kmls_rel and x and os.path.isfile(x):
+                self._conferir()
 
         def _xlsx_escolhido(self):
             c = self.v_xlsx.get().strip()
@@ -632,13 +689,15 @@ def abrir_janela():
                 self._conferir()
 
         def _rotulo_botao(self):
-            if self.rodando:
+            if self.rodando_rel:
                 self.bt_gerar.configure(state='disabled', text='Processando…')
                 return
             if not self.kmls_rel:
                 txt, ok = 'Selecione os KML', False
             elif not self.v_xlsx.get().strip():
                 txt, ok = 'Selecione a planilha', False
+            elif not os.path.isfile(self.v_xlsx.get().strip()):
+                txt, ok = 'Planilha não encontrada', False
             elif not self.v_projeto.get().strip():
                 txt, ok = 'Dê um nome ao projeto', False
             elif not os.path.isdir(self.v_saida.get().strip()):
@@ -653,6 +712,9 @@ def abrir_janela():
             self.bt_gerar.configure(state='normal' if ok else 'disabled', text=txt)
 
         def _conferir(self):
+            self._conf_geracao += 1
+            geracao = self._conf_geracao
+            self.conf = None
             self._limpa(self.txt_conf)
             self._escreve(self.txt_conf, 'Conferindo os arquivos…', 'fraco')
             kmls, xlsx = list(self.kmls_rel), self.v_xlsx.get().strip()
@@ -673,9 +735,9 @@ def abrir_janela():
                     _, sit = atribuir_pontos(pontos, talhoes, epsg, tol)
                     pts = [(float(pontos.lon.iloc[i]), float(pontos.lat.iloc[i]), sit[i])
                            for i in range(len(pontos))]
-                    self.fila.put(('conf', (c, talhoes, pts)))
+                    self.fila.put(('conf', (geracao, c, talhoes, pts)))
                 except Exception as e:                               # noqa: BLE001
-                    self.fila.put(('conf_erro', (str(e), traceback.format_exc())))
+                    self.fila.put(('conf_erro', (geracao, str(e), traceback.format_exc())))
 
             threading.Thread(target=trabalho, daemon=True).start()
 
@@ -708,6 +770,8 @@ def abrir_janela():
             self._rotulo_botao()
 
         def _gerar(self):
+            if self.rodando_rel:
+                return
             try:
                 epsg = int(self.v_epsg.get().strip())
                 res = float(self.v_res.get().strip().replace(',', '.'))
@@ -722,7 +786,7 @@ def abrir_janela():
                 messagebox.showerror(APP, 'A pasta de saída não existe.')
                 return
 
-            self.rodando = True
+            self.rodando_rel = True
             self._rotulo_botao()
             for b in (self.bt_abrir, self.bt_relatorio):
                 b.configure(state='disabled')
@@ -767,16 +831,19 @@ def abrir_janela():
                 self.lb_versao.configure(text=f'versão {VERSAO} · verificando…')
 
             def trabalho():
+                falha = None
                 try:
                     from penetro3d_atualizacao import verificar
                     info = verificar(manual=manual)
-                except Exception:                                    # noqa: BLE001
-                    info = None
-                self.fila.put(('atualizacao', (info, manual)))
+                except Exception as e:                               # noqa: BLE001
+                    info, falha = None, str(e)
+                self.fila.put(('atualizacao', (info, manual, falha)))
 
             threading.Thread(target=trabalho, daemon=True).start()
 
         def _mostrar_aviso(self, info):
+            if self.baixando or self.instalador_baixado:
+                return                     # já em andamento: não reabrir o botão
             self.info_atualizacao = info
             self.lb_aviso.configure(
                 text=f"Nova versão {info['versao']} disponível — você usa a {VERSAO}. "
@@ -786,15 +853,19 @@ def abrir_janela():
 
         def _atualizar_agora(self):
             info = self.info_atualizacao
-            if not info:
+            if not info or self.baixando:
                 return
-            if self.rodando:
+            if self.rodando_pl or self.rodando_rel:
                 messagebox.showinfo(APP, 'Espere o processamento atual terminar.')
+                return
+            if self.instalador_baixado:
+                self._instalar(self.instalador_baixado)
                 return
             if not sys.platform.startswith('win'):
                 webbrowser.open(info['pagina'])
                 return
             self.bt_atualizar.configure(state='disabled', text='Baixando… 0%')
+            self.baixando = True
 
             def progresso(feito, total):
                 if total:
@@ -813,11 +884,29 @@ def abrir_janela():
         def _bombear(self):
             try:
                 while True:
-                    tipo, carga = self.fila.get_nowait()
-                    self._tratar(tipo, carga)
-            except queue.Empty:
-                pass
-            self.raiz.after(120, self._bombear)
+                    try:
+                        tipo, carga = self.fila.get_nowait()
+                    except queue.Empty:
+                        break
+                    try:
+                        self._tratar(tipo, carga)
+                    except Exception:                                # noqa: BLE001
+                        self._erro_interno(*sys.exc_info())
+            finally:
+                self.raiz.after(120, self._bombear)
+
+        def _instalar(self, caminho):
+            v = self.info_atualizacao['versao']
+            if messagebox.askyesno(APP, f'Instalador da versão {v} baixado e conferido.\n\n'
+                                        f'O Penetro3D vai fechar para instalar. Continuar?'):
+                try:
+                    from penetro3d_atualizacao import executar_instalador
+                    executar_instalador(caminho)
+                    self.raiz.after(300, self.raiz.destroy)
+                except Exception as e:                               # noqa: BLE001
+                    messagebox.showerror(APP, f'Não consegui abrir o instalador:\n{e}')
+            else:
+                self.bt_atualizar.configure(state='normal', text='Instalar agora')
 
         def _tratar(self, tipo, carga):
             if tipo == 'log':
@@ -834,21 +923,24 @@ def abrir_janela():
                     self._limpa(self.txt_pl)
                     self._escreve(self.txt_pl, 'ERRO: ' + msg, 'erro')
             elif tipo == 'conf':
-                self._mostrar_conferencia(*carga)
+                if carga[0] == self._conf_geracao:
+                    self._mostrar_conferencia(*carga[1:])
             elif tipo == 'conf_erro':
-                msg, _ = carga
+                geracao, msg, _ = carga
+                if geracao != self._conf_geracao:
+                    return
                 self._limpa(self.txt_conf)
                 self._escreve(self.txt_conf, 'ERRO: ' + msg, 'erro')
                 self.conf = None
                 self._rotulo_botao()
             elif tipo == 'plano':
-                self.rodando = False
+                self.rodando_pl = False
                 self._mostrar_plano(carga)
                 self._previa_plano()
                 self.bt_calcular.configure(state='normal')
             elif tipo == 'fim':
                 self.barra.stop()
-                self.rodando = False
+                self.rodando_rel = False
                 self.destino = carga['destino']
                 self.htmls = carga.get('htmls') or []
                 self._escreve(self.txt_log, '')
@@ -858,6 +950,13 @@ def abrir_janela():
                 if carga['orfaos']:
                     self._escreve(self.txt_log, 'Pontos não atribuídos: '
                                   + ', '.join(carga['orfaos']), 'atencao')
+                if carga.get('falhas'):
+                    falhos = [r['talhao'] for r in carga.get('resumo', [])
+                              if str(r.get('situacao', '')).startswith('erro')]
+                    messagebox.showwarning(
+                        APP, f"{carga['falhas']} talhão(ões) não foram gerados: "
+                             f"{', '.join(falhos)}.\n\nO motivo está no registro, logo abaixo. "
+                             f"Os demais foram gerados normalmente.")
                 self.bt_abrir.configure(state='normal')
                 self.bt_relatorio.configure(state='normal' if self.htmls else 'disabled')
                 # um talhão só: abre o relatório, que é o que o usuário faria em seguida
@@ -867,7 +966,10 @@ def abrir_janela():
             elif tipo == 'erro':
                 msg, tb, onde = carga
                 self.barra.stop()
-                self.rodando = False
+                if onde == 'pl':
+                    self.rodando_pl = False
+                else:
+                    self.rodando_rel = False
                 alvo = self.txt_pl if onde == 'pl' else self.txt_log
                 self._escreve(alvo, '')
                 self._escreve(alvo, 'ERRO: ' + msg, 'erro')
@@ -877,30 +979,29 @@ def abrir_janela():
                 self._rotulo_botao()
                 messagebox.showerror(APP, msg)
             elif tipo == 'atualizacao':
-                info, manual = carga
+                info, manual, falha = carga
                 self.lb_versao.configure(text=f'versão {VERSAO} · verificar atualizações')
                 if info:
                     self._mostrar_aviso(info)
+                elif manual and falha:
+                    messagebox.showwarning(APP, f'{falha}\n\nVocê usa a versão {VERSAO}.')
                 elif manual:
-                    messagebox.showinfo(APP, f'Você está na versão mais recente ({VERSAO}).\n\n'
-                                             f'Se estiver sem internet, a verificação não '
-                                             f'consegue consultar o GitHub.')
+                    messagebox.showinfo(APP, f'Você está na versão mais recente ({VERSAO}).')
             elif tipo == 'baixando':
                 self.bt_atualizar.configure(text=f'Baixando… {carga}%')
             elif tipo == 'baixado':
-                v = self.info_atualizacao['versao']
-                if messagebox.askyesno(APP, f'Instalador da versão {v} baixado.\n\n'
-                                            f'O Penetro3D vai fechar para instalar. '
-                                            f'Continuar?'):
-                    try:
-                        from penetro3d_atualizacao import executar_instalador
-                        executar_instalador(carga)
-                        self.raiz.after(300, self.raiz.destroy)
-                    except Exception as e:                           # noqa: BLE001
-                        messagebox.showerror(APP, f'Não consegui abrir o instalador:\n{e}')
+                self.baixando = False
+                self.instalador_baixado = carga
+                if self.rodando_pl or self.rodando_rel:
+                    # o download terminou no meio de um processamento: não fechar agora
+                    self.bt_atualizar.configure(state='normal', text='Instalar agora')
+                    self._escreve(self.txt_log, 'Atualização baixada — clique em "Instalar '
+                                                'agora" quando o processamento terminar.',
+                                  'fraco')
                 else:
-                    self.bt_atualizar.configure(state='normal', text='Atualizar agora')
+                    self._instalar(carga)
             elif tipo == 'baixar_erro':
+                self.baixando = False
                 self.bt_atualizar.configure(state='normal', text='Tentar de novo')
                 messagebox.showerror(APP, f'Não consegui baixar a atualização:\n{carga}\n\n'
                                           f'Você também pode baixar pela página:\n'

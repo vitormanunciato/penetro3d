@@ -176,6 +176,9 @@ const CHAVE = 'penetro3d.radar.v1';
 const MOTIVOS = ['Pedra / impedimento', 'Terraço ou curva', 'Cabeceira / manobra',
                  'Solo alagado', 'Sem acesso', 'Outro'];
 const $ = s => document.querySelector(s);
+// texto vindo do arquivo de plano nunca entra na página como HTML
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const S = {plano:null, pontos:[], atual:0, pos:null, vista:'radar', vigia:null};
 
 /* Haversine e azimute inicial. Em distâncias de talhão (<2 km) a esfera basta: o
@@ -209,12 +212,17 @@ function carregar(){
 }
 
 function lerGeoJSON(txt){
-  const g = JSON.parse(txt);
-  if(!g || g.type !== 'FeatureCollection') throw new Error('Não é um GeoJSON de plano.');
-  const pts = g.features.filter(f => f.geometry && f.geometry.type === 'Point')
-    .map(f => ({id:f.properties.id || '?', ordem:f.properties.ordem || 0,
-      lat:f.geometry.coordinates[1], lon:f.geometry.coordinates[0],
-      estado:'aberto', motivo:null, lat_real:null, lon_real:null, precisao:null, quando:null}))
+  let g;
+  try { g = JSON.parse(txt); } catch(e) { throw new Error('O arquivo não é um GeoJSON válido.'); }
+  if(!g || g.type !== 'FeatureCollection' || !Array.isArray(g.features))
+    throw new Error('Não é um GeoJSON de plano.');
+  const pts = g.features.filter(f => f && f.geometry && f.geometry.type === 'Point'
+      && Array.isArray(f.geometry.coordinates)
+      && Number.isFinite(+f.geometry.coordinates[0]) && Number.isFinite(+f.geometry.coordinates[1]))
+    .map(f => { const pr = f.properties || {};
+      return {id:String(pr.id ?? '?'), ordem:+pr.ordem || 0,
+      lat:+f.geometry.coordinates[1], lon:+f.geometry.coordinates[0],
+      estado:'aberto', motivo:null, lat_real:null, lon_real:null, precisao:null, quando:null}; })
     .sort((a,b) => a.ordem - b.ordem);
   if(!pts.length) throw new Error('O arquivo não tem pontos de amostragem.');
   return {plano: g.properties || {}, pontos: pts};
@@ -282,14 +290,14 @@ function desenharLista(){
   const pulados = S.pontos.filter(p=>p.estado==='pulado').length;
   $('#resumo').innerHTML = `<b>${feitos}</b> coletados · <b>${pulados}</b> pulados · `
     + `<b>${S.pontos.length - feitos - pulados}</b> restantes`
-    + (S.plano && S.plano.area_ha ? `<br>${S.plano.talhao || ''} — ${S.plano.area_ha} ha, plano ${S.plano.nivel || ''}` : '');
+    + (S.plano && S.plano.area_ha ? `<br>${esc(S.plano.talhao)} — ${esc(S.plano.area_ha)} ha, plano ${esc(S.plano.nivel)}` : '');
   $('#corpo-lista').innerHTML = S.pontos.map((p,i)=>{
     const d = S.pos ? distancia(S.pos, p) : null;
     const tag = p.estado==='coletado' ? '<span class="tag ok">coletado</span>'
-              : p.estado==='pulado' ? `<span class="tag pulado">${p.motivo||'pulado'}</span>`
+              : p.estado==='pulado' ? `<span class="tag pulado">${esc(p.motivo||'pulado')}</span>`
               : '<span class="tag aberto">aberto</span>';
     return `<tr class="${p.estado!=='aberto'?'feito':''} ${i===S.atual?'atual':''}" data-i="${i}">
-      <td><b>${p.id}</b></td><td>${tag}</td>
+      <td><b>${esc(p.id)}</b></td><td>${tag}</td>
       <td class="num">${d==null?'—':(d<1000?Math.round(d)+' m':(d/1000).toFixed(1)+' km')}</td></tr>`;
   }).join('');
   $('#corpo-lista').querySelectorAll('tr').forEach(tr=>{
@@ -298,6 +306,9 @@ function desenharLista(){
 }
 
 function registrar(estado, motivo){
+  // toque duplo rápido marcava também o ponto seguinte
+  if(Date.now() - (S.ultimoToque || 0) < 1200) return;
+  S.ultimoToque = Date.now();
   const p = pontoAtual(); if(!p) return;
   p.estado = estado; p.motivo = motivo || null;
   // Grava ONDE A PESSOA ESTÁ, não onde o plano mandava: o desvio é dado.

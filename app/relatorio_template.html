@@ -14,14 +14,14 @@ __PLOTLY__
   :root:not([data-theme="light"]){
     --ground:#0D1512; --surface:#141F1B; --surface-2:#1B2723; --line:#2A3833;
     --ink:#E9EFEB; --ink-2:#B3C1BA; --ink-3:#7F8F88;
-    --verde1:#4FBFA8; --verde3:#2FD08C; --accent:#4FBFA8;
+    --verde1:#4FBFA8; --verde3:#2FD08C; --accent:#4FBFA8; --on-accent:#0D1512;
     --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
   }
 }
 :root[data-theme="dark"]{
   --ground:#0D1512; --surface:#141F1B; --surface-2:#1B2723; --line:#2A3833;
   --ink:#E9EFEB; --ink-2:#B3C1BA; --ink-3:#7F8F88;
-  --verde1:#4FBFA8; --verde3:#2FD08C; --accent:#4FBFA8;
+  --verde1:#4FBFA8; --verde3:#2FD08C; --accent:#4FBFA8; --on-accent:#0D1512;
   --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
 }
 *{box-sizing:border-box}
@@ -52,7 +52,7 @@ section{margin-top:40px}
 .seg button{font:inherit; font-size:13px; font-weight:500; border:0; background:transparent; color:var(--ink-2);
   padding:7px 13px; border-radius:6px; cursor:pointer; white-space:nowrap}
 .seg button:hover{color:var(--ink); background:var(--surface)}
-.seg button[aria-pressed="true"]{background:var(--accent); color:#fff}
+.seg button[aria-pressed="true"]{background:var(--accent); color:var(--on-accent,#fff)}
 .seg button:focus-visible{outline:2px solid var(--verde3); outline-offset:2px}
 .panel{background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow); overflow:hidden}
 .palco{position:relative}
@@ -124,6 +124,12 @@ footer{margin-top:44px; padding-top:18px; border-top:1px solid var(--line); font
   .method{padding:16px 15px}
   .method ul{font-size:13px; padding-left:16px}
 }
+@media print{
+  .seg, .palco, .escudo, .destravar, #seg3d + p.note{display:none!important}
+  .panel .viewnote{border:0}
+  .scale, .scale div, .kpi, .selo{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+  .card, .kpi, .panel, tr{break-inside:avoid}
+}
 </style>
 
 <div class="wrap">
@@ -156,7 +162,7 @@ footer{margin-top:44px; padding-top:18px; border-top:1px solid var(--line); font
 
 <section>
   <div class="sechead"><div><span class="eyebrow">Corte por camada</span><h2>Resistência média em profundidade</h2></div></div>
-  <p class="note">Média da resistência à penetração dentro de cada faixa de profundidade. Os pontos claros marcam os perfis amostrados; a linha marca o contorno do talhão. O selo de cada camada vem de uma validação cruzada: onde a interpolação não reduz o erro ante usar a média do talhão, o desenho das manchas não tem suporte no dado.</p>
+  <p class="note">Média da resistência à penetração dentro de cada faixa de profundidade. Os pontos claros marcam os perfis amostrados; a linha marca o contorno do talhão. O selo de cada camada vem de uma validação cruzada: onde a interpolação não reduz o erro em pelo menos 10% ante usar a média do talhão, o desenho das manchas não tem suporte no dado.</p>
   <div class="grid4" id="layers"></div>
 </section>
 
@@ -191,6 +197,10 @@ const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).
 const nx = D.x.length, ny = D.y.length, nz = D.z.length;
 const br = n => n.toLocaleString('pt-BR');
 const vg = v => String(v).replace('.', ',');
+// IDs de perfil vêm da planilha: escapados antes de entrar em hover/legenda do Plotly
+const escH = s => String(s).replace(/[&<>"'%]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',
+  '"':'&quot;',"'":'&#39;','%':'&#37;'}[c]));
+const cm = v => (v % 1 ? v.toFixed(1) : v.toFixed(0)).replace('.', ',');
 
 /* ---------- cabeçalho ---------- */
 document.getElementById('hd-eyebrow').textContent = M.eyebrow;
@@ -203,7 +213,7 @@ document.getElementById('rodape').textContent = M.rodape;
 const kpis = [
   {lab:`Área com camada restritiva (>${br(L.crit)} kPa) em alguma profundidade`, val:S.restritiva_area, un:'%', cls:'crit'},
   {lab:'Espessura somada acima do limite, onde ocorre', val:vg(S.restritiva_esp.toFixed(1)), un:'cm', cls:'warn'},
-  {lab:'Profundidade mediana da resistência máxima', val:S.zmax_mediana.toFixed(0), un:'cm', cls:'warn'},
+  {lab:'Profundidade mediana da resistência máxima', val:cm(S.zmax_mediana), un:'cm', cls:'warn'},
   ...D.camadas.slice(0,2).map(c => ({
     lab:`Resistência média na camada ${c.rotulo}`, val:br(S[c.chave].media), un:'kPa',
     cls: S[c.chave].media >= L.crit ? 'crit' : (S[c.chave].media >= L.mod ? 'warn' : 'ok')}))
@@ -260,14 +270,22 @@ const tVolume = {type:'volume', x:volX, y:volY, z:volZ, value:volV,
   surface:{count:NSURF}, caps:{x:{show:false},y:{show:false},z:{show:false}},
   hoverinfo:'skip', name:'Volume'};
 
-const tIso = {type:'isosurface', x:volX, y:volY, z:volZ, value:volV,
+// a casca restritiva usa TODAS as profundidades (com 1 a cada 2 escondia ~7% da área)
+const isoX=[], isoY=[], isoZ=[], isoV=[];
+for (let k=0;k<nz;k++) for (let j=0;j<ny;j++) for (let i=0;i<nx;i++){
+  const v = D.vol[k][j][i];
+  isoX.push(D.x[i]); isoY.push(D.y[j]); isoZ.push(zi[k]); isoV.push(v===null? -9999 : v);
+}
+const tIso = {type:'isosurface', x:isoX, y:isoY, z:isoZ, value:isoV,
   isomin:L.crit, isomax:Math.max(CMAX*2, D.maxvalor+100), cmin:0, cmax:CMAX, colorscale:RAMP,
   showscale:true, colorbar:cbar, opacity:0.9, surface:{count:2},
   caps:{x:{show:true},y:{show:true},z:{show:true}}, hoverinfo:'skip', name:'Camada restritiva'};
 
 const tSlices = D.fatias.map((dep,idx)=>{
   const k = D.z.indexOf(dep);
-  return {type:'surface', x:D.x, y:D.y, z: D.y.map(()=> D.x.map(()=> -dep)),
+  // fora do talhão e no açude não há superfície (antes aparecia como solo solto)
+  return {type:'surface', x:D.x, y:D.y,
+    z: D.vol[k].map(linha => linha.map(v => v === null ? null : -dep)),
     surfacecolor: D.vol[k], cmin:0, cmax:CMAX, colorscale:RAMP,
     showscale: idx===0, colorbar:cbar, opacity:0.94,
     contours:{x:{highlight:false},y:{highlight:false},z:{highlight:false}},
@@ -278,8 +296,8 @@ const tProfiles = D.pontos.map(p => ({
   type:'scatter3d', mode:'markers', x:p.ci.map(()=>p.x), y:p.ci.map(()=>p.y), z:zi,
   marker:{size:5, color:p.ci, cmin:0, cmax:CMAX, colorscale:RAMP, showscale:false,
           line:{width:0.5, color:p.dentro? 'rgba(255,255,255,.45)':'#727D84'}},
-  hovertemplate:`Perfil ${p.id} · %{customdata} cm<br>%{marker.color:.0f} kPa<extra></extra>`,
-  customdata:D.z, showlegend:false, name:'P'+p.id}));
+  hovertemplate:`Perfil ${escH(p.id)} · %{customdata} cm<br>%{marker.color:.0f} kPa<extra></extra>`,
+  customdata:D.z, showlegend:false, name:'P'+escH(p.id)}));
 
 // D.poly traz o anel externo e, se houver, os buracos do talhão; null separa os anéis
 const contorno = D.poly.reduce((a, anel, i) => a.concat(i ? [[null,null]] : [], anel), []);
@@ -291,7 +309,7 @@ const pins = {type:'scatter3d', mode:'markers',
   x:D.pontos.map(p=>p.x), y:D.pontos.map(p=>p.y), z:D.pontos.map(()=>2),
   marker:{size: estreito ? 3 : 4, symbol:'diamond', line:{width:1, color:'#FFFFFF'},
           color:D.pontos.map(p=>p.dentro?'#12211D':'#727D84')},
-  text:D.pontos.map(p=>String(p.id)),
+  text:D.pontos.map(p=>escH(p.id)),
   hovertemplate:'Perfil %{text}<extra></extra>', showlegend:false, name:'Perfis'};
 
 const VIEWS = {
@@ -323,7 +341,7 @@ function baseLayout(){
               titlefont:{size:11, color:ink3}, tickfont:{size:10, color:ink3},
               backgroundcolor:'rgba(0,0,0,0)', showbackground:true};
   return {
-    margin:{l:0,r:0,t:0,b:0}, paper_bgcolor:'rgba(0,0,0,0)',
+    margin:{l:0,r:0,t:0,b:0}, paper_bgcolor:'rgba(0,0,0,0)', separators:',.',
     font:{family:'IBM Plex Sans, Verdana, sans-serif', color:ink},
     scene:{
       xaxis:{...ax, title:{text:'Leste–Oeste (m)'}},
@@ -384,9 +402,10 @@ function drawLayers(){
       line:{width:1.4, color:ink3}, hoverinfo:'skip'};
     const pt = {type:'scatter', mode:'markers', x:D.pontos.map(p=>p.x), y:D.pontos.map(p=>p.y),
       marker:{size:5, color:D.pontos.map(p=>p.dentro?'#FFFFFF':'#727D84'), line:{width:1, color:'#12211D'}},
-      text:D.pontos.map(p=>'Perfil '+p.id), hovertemplate:'%{text}<extra></extra>'};
+      text:D.pontos.map(p=>'Perfil '+escH(p.id)), hovertemplate:'%{text}<extra></extra>'};
     Plotly.react('lay'+i, [heat,out,pt], {
       margin:{l:6,r:6,t:4,b:6}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+      separators:',.',
       showlegend:false, hovermode:'closest',
       xaxis:{visible:false, constrain:'domain'},
       yaxis:{visible:false, scaleanchor:'x', scaleratio:1, constrain:'domain'}
@@ -402,12 +421,13 @@ function drawProfiles(){
   const xmax = Math.round(CMAX*1.09);
   const traces = D.pontos.map(p=>({type:'scatter', mode:'lines', x:p.ci, y:D.z,
     line:{width:1.1, color:'rgba(114,125,132,.42)'},
-    hovertemplate:`Perfil ${p.id}<br>%{x:.0f} kPa · %{y} cm<extra></extra>`, showlegend:false}));
+    hovertemplate:`Perfil ${escH(p.id)}<br>%{x:.0f} kPa · %{y} cm<extra></extra>`, showlegend:false}));
   traces.push({type:'scatter', mode:'lines', x:media, y:D.z,
     name:`Média dos ${D.pontos.length} perfis`, line:{width:3, color:css('--verde1')},
     hovertemplate:'Média %{x:.0f} kPa · %{y} cm<extra></extra>'});
   Plotly.react('profiles', traces, {
     margin:{l:52,r:14,t:10,b:44}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+    separators:',.',
     font:{family:'IBM Plex Sans, Verdana, sans-serif', color:ink, size:12},
     xaxis:{title:{text:'Resistência à penetração (kPa)', font:{size:11.5, color:ink3}},
            gridcolor:line, zeroline:false, range:[0,xmax], tickfont:{color:ink3, size:10.5}},

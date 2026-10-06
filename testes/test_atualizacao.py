@@ -29,9 +29,23 @@ def test_mesma_versao_nao_avisa(monkeypatch):
     assert atu.verificar(manual=True, atual='1.3.0') is None
 
 
-def test_sem_internet_nao_avisa(monkeypatch):
+def test_sem_internet_automatico_fica_quieto_e_tenta_de_novo(monkeypatch):
     monkeypatch.setattr(atu, 'ultima_versao', lambda repo=None: None)
-    assert atu.verificar(manual=True, atual='1.3.0') is None
+    assert atu.verificar(atual='1.3.0') is None
+    assert atu._ultima_consulta() == 0           # falha não conta como consulta feita
+
+
+def test_sem_internet_manual_avisa_que_nao_conseguiu(monkeypatch):
+    monkeypatch.setattr(atu, 'ultima_versao', lambda repo=None: None)
+    with pytest.raises(atu.SemResposta):
+        atu.verificar(manual=True, atual='1.3.0')
+
+
+def test_estado_corrompido_nao_trava(tmp_path):
+    (tmp_path / 'estado.json').write_text('[]', encoding='utf-8')
+    assert atu._ultima_consulta() == 0
+    (tmp_path / 'estado.json').write_text('{"ultima_consulta": "x"}', encoding='utf-8')
+    assert atu._ultima_consulta() == 0
 
 
 def test_intervalo_entre_consultas(monkeypatch):
@@ -49,13 +63,18 @@ def test_variavel_de_ambiente_desliga(monkeypatch):
     assert atu.verificar(atual='1.3.0') is None
 
 
-def test_ultima_versao_le_o_redirecionamento(monkeypatch):
+@pytest.mark.parametrize('final, tag', [
+    ('https://github.com/x/y/releases/tag/v1.4.2', 'v1.4.2'),
+    ('https://github.com/x/y/releases/tag/v1.5.0-rc1', 'v1.5.0-rc1'),
+    ('https://github.com/x/y/releases', None),
+])
+def test_ultima_versao_le_o_redirecionamento(monkeypatch, final, tag):
     class Resp:
         def __enter__(self): return self
         def __exit__(self, *a): pass
-        def geturl(self): return 'https://github.com/x/y/releases/tag/v1.4.2'
+        def geturl(self): return final
     monkeypatch.setattr(atu, '_abrir', lambda url, t: Resp())
-    assert atu.ultima_versao('x/y') == 'v1.4.2'
+    assert atu.ultima_versao('x/y') == tag
 
 
 class _Download(io.BytesIO):
@@ -66,17 +85,49 @@ class _Download(io.BytesIO):
     def __exit__(self, *a): pass
 
 
-def test_download_completo(monkeypatch, tmp_path):
+INFO = {'versao': '9.0.0', 'instalador': 'exe', 'hash': 'sha'}
+
+
+def _servidor(conteudo, total, hash_txt):
+    def abrir(url, t):
+        if url == 'sha':
+            if hash_txt is None:
+                raise atu.urllib.error.URLError('404')
+            return _Download(hash_txt.encode(), len(hash_txt))
+        return _Download(conteudo, total)
+    return abrir
+
+
+def test_download_completo_e_conferido(monkeypatch, tmp_path):
+    import hashlib
+    dados = b'x' * 1000
+    h = hashlib.sha256(dados).hexdigest()
     monkeypatch.setattr(atu.tempfile, 'gettempdir', lambda: str(tmp_path))
-    monkeypatch.setattr(atu, '_abrir', lambda url, t: _Download(b'x' * 1000, 1000))
+    monkeypatch.setattr(atu, '_abrir', _servidor(dados, 1000, f'{h}  Penetro3D-Setup.exe\n'))
     vistos = []
-    p = atu.baixar({'versao': '9.0.0', 'instalador': 'u'}, lambda a, b: vistos.append(a))
-    assert open(p, 'rb').read() == b'x' * 1000 and vistos[-1] == 1000
+    p = atu.baixar(INFO, lambda a, b: vistos.append(a))
+    assert open(p, 'rb').read() == dados and vistos[-1] == 1000
+
+
+def test_hash_diferente_nao_instala(monkeypatch, tmp_path):
+    monkeypatch.setattr(atu.tempfile, 'gettempdir', lambda: str(tmp_path))
+    monkeypatch.setattr(atu, '_abrir', _servidor(b'x' * 1000, 1000, '0' * 64))
+    with pytest.raises(IOError, match='SHA-256'):
+        atu.baixar(INFO)
+    assert not list(tmp_path.iterdir())
+
+
+def test_sem_hash_publicado_nao_instala(monkeypatch, tmp_path):
+    monkeypatch.setattr(atu.tempfile, 'gettempdir', lambda: str(tmp_path))
+    monkeypatch.setattr(atu, '_abrir', _servidor(b'x' * 1000, 1000, None))
+    with pytest.raises(IOError, match='SHA-256'):
+        atu.baixar(INFO)
+    assert not list(tmp_path.iterdir())
 
 
 def test_download_cortado_nao_fica(monkeypatch, tmp_path):
     monkeypatch.setattr(atu.tempfile, 'gettempdir', lambda: str(tmp_path))
-    monkeypatch.setattr(atu, '_abrir', lambda url, t: _Download(b'x' * 500, 1000))
+    monkeypatch.setattr(atu, '_abrir', _servidor(b'x' * 500, 1000, 'a' * 64))
     with pytest.raises(IOError):
-        atu.baixar({'versao': '9.0.0', 'instalador': 'u'})
+        atu.baixar(INFO)
     assert not list(tmp_path.iterdir())

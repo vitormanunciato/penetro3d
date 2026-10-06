@@ -8,7 +8,7 @@ Mapas 3D de compactação do solo a partir dos contornos dos talhões (KML) e da
 
 - **relatório 3D interativo (HTML)**: bloco de resistência à penetração que gira com o mouse, cortes por camada, perfis e método. Abre em qualquer navegador, sem internet, inclusive no celular;
 - **PDF** para arquivo e impressão: mapas por camada, espessura acima do limite, profundidade da resistência máxima, gráfico por ponto e tabela com uma linha por ponto;
-- **CSVs** com os perfis brutos e a grade interpolada.
+- **CSVs** com os perfis brutos e a grade interpolada, no formato do Excel em português (`;` entre colunas, vírgula decimal).
 
 Também planeja a coleta (malha hexagonal em três níveis de densidade) e exporta o plano para Google Earth, GPS, SIG ou planilha.
 
@@ -19,16 +19,16 @@ Também planeja a coleta (malha hexagonal em três níveis de densidade) e expor
    Se aparecer "O Windows protegeu o computador", clique em **Mais informações → Executar assim mesmo**. O aviso aparece porque o instalador não tem assinatura digital paga.
 3. O Penetro3D fica no menu Iniciar e na área de trabalho.
 
-**Atualizações:** o programa consulta esta página (no máximo uma vez por dia) e avisa quando há versão nova. Basta clicar em **Atualizar agora**. Relatórios já gerados não são tocados. Em computadores sem internet, ou onde a TI prefira controlar versões, defina a variável de ambiente `PENETRO3D_SEM_ATUALIZACAO=1`.
+**Atualizações:** o programa consulta esta página (no máximo uma vez por dia) e avisa quando há versão nova. Basta clicar em **Atualizar agora**. Antes de instalar, o programa confere o SHA-256 do instalador contra o arquivo `Penetro3D-Setup.exe.sha256` publicado na versão; se não bater, não instala. Relatórios já gerados não são tocados. Em computadores sem internet, ou onde a TI prefira controlar versões, defina a variável de ambiente `PENETRO3D_SEM_ATUALIZACAO=1`.
 
 ## Usar
 
 | Aba | Entrada | Saída |
 |---|---|---|
 | **1 · Planejar coleta** | KML dos talhões | pontos em KMZ/KML para Google Earth, GPX, GeoJSON ou CSV |
-| **2 · Gerar relatórios** | nome do projeto, KML dos talhões, uma planilha do Falker | uma pasta por talhão com HTML 3D, PDF e CSVs |
+| **2 · Gerar relatórios** | nome do projeto, KML ou KMZ dos talhões, uma planilha do Falker | uma pasta por talhão com HTML 3D, PDF e CSVs |
 
-Os pontos da planilha são distribuídos entre os talhões pela posição GPS. Um ponto fora do polígono, a até 30 m da divisa, entra como "borda". Um ponto fora de todos os talhões aparece em `pontos_nao_atribuidos.csv`. Antes de gerar, o painel de conferência avisa sobre perfis incompletos, leituras atípicas (pedra, raiz) e densidade amostral baixa.
+Os pontos da planilha são distribuídos entre os talhões pela posição GPS. Um ponto fora do polígono, a até 30 m da divisa, entra como "borda". Um ponto fora de todos os talhões aparece em `pontos_nao_atribuidos.csv`. Antes de gerar, o painel de conferência avisa sobre perfis incompletos, leituras atípicas (pedra, raiz), perfis repetidos no mesmo lugar, contorno de KML que se cruza, planilha em MPa e densidade amostral baixa. Uma leitura em branco no meio de um perfil é preenchida pelas vizinhas; a profundidade da análise é decidida por talhão, e um talhão com problema não impede os outros de serem gerados.
 
 Para experimentar, use os arquivos da pasta `exemplos`, que também é instalada junto com o programa.
 
@@ -108,7 +108,7 @@ O repositório é público e **não contém dados reais de nenhuma propriedade**
 
 ```bash
 pip install -r requirements.txt
-python -m pytest testes                          # 52 testes, ~10 s
+python -m pytest testes                          # 85 testes, ~25 s
 python app/penetro3d_app.py                      # abre a janela
 python app/penetro3d_app.py --cli --projeto Teste \
   --kml exemplos/talhoes_exemplo.kml --xlsx exemplos/penetrometria_exemplo.xlsx --saida saidas

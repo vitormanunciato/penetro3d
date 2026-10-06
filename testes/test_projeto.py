@@ -50,14 +50,14 @@ def test_pdf_tem_paginas(saida):
 
 def test_resumo_csv(saida):
     r = pd.read_csv(os.path.join(saida['destino'], 'resumo_do_projeto.csv'),
-                    sep=None, engine='python')
+                    sep=';', decimal=',', encoding='utf-8-sig')
     assert len(r) == 2
     assert 'camadas_com_suporte_espacial' in r.columns
 
 
 def test_grade_csv_sem_buracos(saida):
     g = pd.read_csv(os.path.join(saida['destino'], 'Talhao_Sul', 'grade_interpolada.csv'),
-                    sep=None, engine='python')
+                    sep=';', decimal=',', encoding='utf-8-sig')
     assert len(g) > 1000 and not g.isna().any().any()
 
 

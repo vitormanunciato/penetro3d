@@ -15,8 +15,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+# só leitura por padrão: os testes instalam pacotes do PyPI, e um pacote comprometido
+# não pode ganhar permissão de publicar versões. Só o job "publicar" escreve.
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -27,12 +29,19 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
           cache: pip
-          cache-dependency-path: requirements.txt
-      - run: pip install -r requirements.txt
+          cache-dependency-path: requirements-win.txt
+      # as MESMAS versões que vão no instalador (sem os hashes, que são dos wheels de
+      # Windows, e sem as DLLs do Visual C++, que só existem lá)
+      - name: Dependências fixadas do instalador
+        run: |
+          sed -E 's/ --hash=[^ ]+//g' requirements-win.txt | grep -v '^msvc-runtime' > /tmp/req.txt
+          pip install -r /tmp/req.txt pytest
       - run: python -m pytest testes -q
 
   construir:
@@ -40,6 +49,8 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
@@ -62,7 +73,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: instalador
-          path: dist/Penetro3D-Setup.exe
+          path: |
+            dist/Penetro3D-Setup.exe
+            dist/Penetro3D-Setup.exe.sha256
           retention-days: 14
 
   testar-no-windows:
@@ -79,6 +92,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: instalador
+      - name: SHA-256 publicado confere com o instalador
+        run: |
+          $esperado = ((Get-Content .\Penetro3D-Setup.exe.sha256 -Raw) -split '\s+')[0]
+          $real = (Get-FileHash .\Penetro3D-Setup.exe -Algorithm SHA256).Hash.ToLower()
+          if ($esperado -ne $real) { throw "hash diferente: $esperado x $real" }
       - name: Instalar sem perguntas
         run: |
           $p = Start-Process .\Penetro3D-Setup.exe -ArgumentList '/S', "/D=$env:DESTINO" -Wait -PassThru
@@ -125,15 +143,29 @@ jobs:
           $p = Start-Process "$env:DESTINO\Desinstalar.exe" -ArgumentList '/S', "_?=$env:DESTINO" -Wait -PassThru
           if (Test-Path "$env:DESTINO\python") { throw 'desinstalação deixou o Python para trás' }
           if (Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Penetro3D.lnk") { throw 'atalho ficou' }
+      - name: Instalador detecta o programa aberto
+        run: |
+          $p = Start-Process .\Penetro3D-Setup.exe -ArgumentList '/S', "/D=$env:DESTINO" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "instalação saiu com $($p.ExitCode)" }
+          $app = Start-Process "$env:DESTINO\python\pythonw.exe" -ArgumentList '-E', '-s', '-c', '"import time; time.sleep(120)"' -PassThru
+          Start-Sleep 3
+          $t = Start-Process .\Penetro3D-Setup.exe -ArgumentList '/S', "/D=$env:DESTINO" -Wait -PassThru
+          Stop-Process -Id $app.Id -Force
+          if ($t.ExitCode -eq 0) { throw 'instalou por cima com o programa aberto' }
+          "recusou com o programa aberto (código $($t.ExitCode)), como devia"
+          if (-not (Test-Path "$env:DESTINO\python\pythonw.exe")) { throw 'a tentativa recusada apagou arquivos' }
 
   publicar:
     needs: testar-no-windows
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
           name: instalador
@@ -142,7 +174,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           git fetch --force --tags
-          git tag -l --format='%(contents)' "$GITHUB_REF_NAME" > notas.md
+          # assunto + corpo da tag anotada, sem bloco de assinatura
+          git tag -l --format='%(contents:subject)%0a%0a%(contents:body)' "$GITHUB_REF_NAME" > notas.md
           [ -s notas.md ] || echo "Penetro3D ${GITHUB_REF_NAME#v}" > notas.md
           cat >> notas.md <<'EOF'
 
@@ -151,5 +184,10 @@ jobs:
           O Windows pode mostrar "O Windows protegeu o computador" — clique em *Mais informações* → *Executar assim mesmo*.
           Quem já tem o programa recebe o aviso de atualização sozinho.
           EOF
-          gh release create "$GITHUB_REF_NAME" Penetro3D-Setup.exe \
-            --title "Penetro3D ${GITHUB_REF_NAME#v}" --notes-file notas.md
+          # rodar de novo (re-run) não pode falhar por a versão já existir
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" Penetro3D-Setup.exe Penetro3D-Setup.exe.sha256 --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" Penetro3D-Setup.exe Penetro3D-Setup.exe.sha256 \
+              --title "Penetro3D ${GITHUB_REF_NAME#v}" --notes-file notas.md
+          fi
